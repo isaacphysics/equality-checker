@@ -1,0 +1,13 @@
+FROM python:2.7
+
+RUN mkdir -p /usr/src/app
+WORKDIR /usr/src/app
+
+COPY requirements.txt /usr/src/app/
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . /usr/src/app
+
+RUN ln -sf /bin/bash /bin/sh
+
+CMD source env/bin/activate && python server/api.py
