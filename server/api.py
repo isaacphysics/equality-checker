@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify, abort
 from sympy.parsing import sympy_parser
 from sympy.printing.latex import latex
+from sympy.core.numbers import Integer
+import sympy.abc
 #from sympy.abc import _clash as sympy_clash
 import sympy
 import numpy
@@ -33,13 +35,19 @@ def numeric_equality(test_expr, target_expr):
     if len(target_expr.free_symbols) == 0:
         print "No variables in target. Can't be numerically tested."  # Sympy would have caught it if equal
         return False
-    domain = numpy.random.random_sample((len(target_expr.free_symbols), 10))
+    if len(test_expr.free_symbols) < len(target_expr.free_symbols):
+        print "Not enough variables in test expression. Can't be numerically tested."
+        return False
+    # Evaluate over a domain, but if the test domain is larger; add in extra dimensions
+    domain_target = numpy.random.random_sample((len(target_expr.free_symbols), 10))
+    extra_test_freedom = numpy.random.random_sample((len(test_expr.free_symbols) - len(target_expr.free_symbols), 10))
+    domain_test = numpy.concatenate((domain_target, extra_test_freedom))
 
     f_target = sympy.lambdify(target_expr.free_symbols, target_expr, "numpy")
-    eval_f_target = f_target(*domain)
+    eval_f_target = f_target(*domain_target)
 
     f_test = sympy.lambdify(test_expr.free_symbols, test_expr, "numpy")
-    eval_f_test = f_test(*domain)
+    eval_f_test = f_test(*domain_test)
     print eval_f_target
     print eval_f_test
     if numpy.max(eval_f_target)-numpy.min(eval_f_target) > 10E10:
@@ -57,15 +65,20 @@ def numeric_equality(test_expr, target_expr):
 
 
 def symbolic_equality(test_expr, target_expr):
-    if test_expr.free_symbols != target_expr.free_symbols:
-        raise IncorrectVariablesException("Error: Target expression has variables %s, ToCheck expression has %s."
-                                          % (sorted(target_expr.free_symbols, key=lambda x: str(x)), sorted(test_expr.free_symbols, key=lambda x: str(x))))
     if test_expr == target_expr:
         return True
     if sympy.simplify(test_expr - target_expr) == 0:
         print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
         KNOWN_PAIRS[(target_expr, test_expr)] = "symbolic"
         return True
+
+
+def factorial(n):
+    """Stop sympy blindly calculating factorials no matter how large."""
+    if type(n) is Integer and n > 50:
+        raise NumericRangeException("Too large integer to compute factorial effectively!")
+    else:
+        return sympy.factorial(n)
 
 
 @app.route('/check', methods=["POST"])
@@ -80,29 +93,33 @@ def check():
     # Or "123456789!" will compute this number to arbitrary precision and take a long long time to return . . .
     # Also, doing that currently allows arbitrary functions in ".name()" form to be executed!
 
-    #transforms = sympy_parser.standard_transformations +
+#    transforms = sympy_parser.standard_transformations + (sympy_parser.split_symbols, sympy_parser.implicit_multiplication)
 
     # These two lines fix this somewhat - don't use default import, and whitelist of functions to match:
-    transforms = (sympy.parsing.sympy_parser.auto_symbol, sympy.parsing.sympy_parser.auto_number, sympy_parser.split_symbols, sympy_parser.implicit_multiplication, sympy.parsing.sympy_parser.convert_xor)
-    global_dict = {"Symbol": sympy.Symbol, "factorial": sympy.factorial, "Integer": sympy.Integer, "Float": sympy.Float, "Rational": sympy.Rational,
+    transforms = (sympy.parsing.sympy_parser.auto_number, sympy.parsing.sympy_parser.auto_symbol, sympy.parsing.sympy_parser.convert_xor, sympy_parser.split_symbols, sympy_parser.implicit_multiplication)
+    global_dict = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy.Float, "Rational": sympy.Rational,
                    "sin": sympy.sin, "cos": sympy.cos, "tan": sympy.tan, "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
                    "exp": sympy.exp, "log": sympy.log,
-                   "sqrt": sympy.sqrt, "abs": sympy.Abs,
-                   "iI": sympy.I}
+                   "sqrt": sympy.sqrt, "abs": sympy.Abs, "factorial": factorial,
+                   "iI": sympy.I, "pi": sympy.pi,
+                   "lamda": sympy.abc.lamda}
 
     if not (("test" in body) and ("target" in body)):
         print "ERROR: Ill-formed request!"
         print body
-        #abort(400)  # May want to just abort with a '400 BAD REQUEST' ?
-        return jsonify(
-            target="",
-            test="",
-            parsedTarget="Fail",
-            parsedTest="Fail")
+        abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
+
+
+    # Prevent splitting of known symbols
+    local_dict = {}
+    if "symbols" in body:
+        for s in str(body["symbols"]).split(","):
+            local_dict[s] = sympy.Symbol(s)
+
 
     try:
         body["target"] = body["target"].replace("lambda", "lamda")  # We can't override the built-in keyword
-        target_expr = sympy_parser.parse_expr(body["target"], transformations=transforms, global_dict=global_dict)  # Removed "local_dict=sympy_clash"
+        target_expr = sympy_parser.parse_expr(body["target"], transformations=transforms, local_dict=local_dict, global_dict=global_dict)
         parsedTarget = latex(target_expr)
     except KeyboardInterrupt:#(sympy.parsing.sympy_tokenize.TokenError, SyntaxError, TypeError, AttributeError):
         print "ERROR: TRUSTED EXPRESSION INCORRECTLY FORMATTED!"
@@ -117,7 +134,7 @@ def check():
 
     try:
         body["test"] = body["test"].replace("lambda", "lamda")  # We can't override the built-in keyword
-        test_expr = sympy_parser.parse_expr(body["test"], transformations=transforms, global_dict=global_dict)
+        test_expr = sympy_parser.parse_expr(body["test"], transformations=transforms, local_dict=local_dict, global_dict=global_dict)
         parsedTest = latex(test_expr)
 
     except KeyboardInterrupt:#(sympy.parsing.sympy_tokenize.TokenError, SyntaxError, TypeError, AttributeError):
