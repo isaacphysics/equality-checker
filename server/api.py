@@ -26,7 +26,7 @@ def known_equal_pair(test_expr, target_expr):
     pair = (target_expr, test_expr)
     if pair in KNOWN_PAIRS:
         print "Known Pair from %s equality!" % KNOWN_PAIRS[pair]
-        return (True, "known_%s" % KNOWN_PAIRS[pair])
+        return (True, KNOWN_PAIRS[pair])
     else:
         return (False, "known")
 

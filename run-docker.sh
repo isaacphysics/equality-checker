@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker build -t marker . && docker run -p 5000:5000 -it marker
+docker build -t ucamcldtg/equality-checker . && docker run -p 5000:5000 -it ucamcldtg/equality-checker

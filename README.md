@@ -14,4 +14,27 @@ Tiny server for testing equivalence of two symbolic expressions.
 Your server should be running on port `http://localhost:9090/check`
 
 ### Production
-Note: The Docker container is available from [dockerhub](https://registry.hub.docker.com/u/ucamcldtg/equality-checker/) by running: docker pull ucamcldtg/equality-checker . This is useful for production use.
+Deploy to dockerhub: `docker push ucamcldtg/equality-checker`
+
+The Docker container is available from [dockerhub](https://registry.hub.docker.com/u/ucamcldtg/equality-checker/) by running: docker pull ucamcldtg/equality-checker . This is useful for production use.
+
+### isaac-dev
+
+The following commands (as root) got it working. The `PYTHONUNBUFFERED` stuff is to make sure stdout is captured properly in logs.
+
+```
+docker pull ucamcldtg/equality-checker
+docker run -d -p 5000:5000 -e PYTHONUNBUFFERED=0 --name equality-checker ucamcldtg/equality-checker
+```
+
+To see live output:
+
+```
+docker logs -f equality-checker
+```
+
+Before pulling new version:
+
+```
+docker rm equality-checker
+```

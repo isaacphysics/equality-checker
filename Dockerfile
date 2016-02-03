@@ -10,4 +10,4 @@ COPY . /usr/src/app
 
 RUN ln -sf /bin/bash /bin/sh
 
-CMD python server/api.py
+CMD python -u server/api.py
