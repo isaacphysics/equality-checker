@@ -28,10 +28,16 @@ KNOWN_PAIRS = dict()
 
 
 class NumericRangeException(Exception):
+    """An exception to be raised when numeric values are rejected."""
     pass
 
 
 def cleanup_string(string):
+    """Some simple sanity checking and cleanup to perform on passed in strings.
+
+       Since arbitrary strings are passed in, and 'eval' is used implicitly by
+       sympy; try and remove the worst offending things from strings.
+    """
     string = re.sub(r'([^0-9])\.([^0-9])', '\g<1> \g<2>', string)  # Allow the . character only surrounded by numbers
     string = string.replace("[", "").replace("]", "")  # This will probably prevent matricies, but good for now
     string = string.replace("'", "").replace('"', '')  # We don't need these characters
@@ -40,7 +46,12 @@ def cleanup_string(string):
 
 
 def known_equal_pair(test_expr, target_expr):
-    """In lieu of any real persistent cache of known pairs, just use a dict for now!"""
+    """In lieu of any real persistent cache of known pairs, just use a dict for now!
+
+       Checks if the two expressions are known pairs from previous testing; this
+       should reduce calls to 'simplify' and the numeric testing, both of which
+       are computationally costly and slow.
+    """
     pair = (target_expr, test_expr)
     if pair in KNOWN_PAIRS:
         print "Known Pair from %s equality!" % KNOWN_PAIRS[pair]
@@ -50,9 +61,20 @@ def known_equal_pair(test_expr, target_expr):
 
 
 def numeric_equality(test_expr, target_expr):
-    if len(target_expr.free_symbols) == 0:
-        print "No variables in target. Can't be numerically tested."  # Sympy symbolic checker would have caught it if equal
-        return False
+    """Test if two expressions are numerically equivalent to one another.
+
+       The implementation of this method is liable to change and currently has
+       several major flaws. It will sample the test and target functions over
+       the free parameters of the target expression. If the test expression has
+       more symbols, the parameter space is extended to include these (to test for
+       cases where these parameters make no difference).
+
+       Returns True if the two expressions are equal for the sampled points, and
+       False otherwise.
+
+        - 'test_expr' should be the untrusted sympy expression to check.
+        - 'target_expr' should be the trusted sympy expression to match against.
+    """
     if len(target_expr.free_symbols.difference(test_expr.free_symbols)) > 0:
         print "Not enough variables in test expression. Can't be numerically tested."
         return False
@@ -68,9 +90,13 @@ def numeric_equality(test_expr, target_expr):
     eval_f_test = f_test(*domain_test)
     print eval_f_target
     print eval_f_test
-    if numpy.max(eval_f_target)-numpy.min(eval_f_target) > 10E10:
+    numeric_range = numpy.abs(numpy.max(eval_f_target)-numpy.min(eval_f_target))
+    # If the function is wildly different at these points, probably can't reliably conclude anything
+    if numeric_range > 10E10:
         raise NumericRangeException("Error: Too Large Range, numeric equality test unlikely to be accurate!")
-    if numpy.max(eval_f_target)-numpy.min(eval_f_target) < 10E-10:
+    # If the function is the same at all of these points, probably can't conclude anything;
+    # Unless the expected result is actually a constant (no free symbols)
+    if (numeric_range < 10E-10) and (len(target_expr.free_symbols) > 0):
         raise NumericRangeException("Error: Too Small Range, numeric equality test unlikely to be accurate!")
     diff = numpy.sum(numpy.abs(eval_f_target - eval_f_test))
     print "Numeric Equality Tested: difference of %.6E" % diff
@@ -83,18 +109,52 @@ def numeric_equality(test_expr, target_expr):
 
 
 def exact_match(test_expr, target_expr):
+    """Test if the entered expression exactly matches the known expression.
+
+       This equality checking does not expand brackets or perform much simplification,
+       so is useful for checking if the submitted answer requires simplifying.
+       Testing is first done using '==' which checks that the order of symbols
+       matches and will not recognise 'x + 1' as equal to '1 + x'.
+       The 'srepr' method outputs sympy's internal representation in a canonical form
+       and thus, while performing no simplification, it allows ordering to be ignored
+       in exact match checking. These two forms are treated equivalently as 'exact'
+       matching.
+
+       Returns True if the sympy expressions have the same internal structure,
+       and False if not.
+
+        - 'test_expr' should be the untrusted sympy expression to check.
+        - 'target_expr' should be the trusted sympy expression to match against.
+    """
     if test_expr == target_expr:
-        print "Exact Match"
+        print "Exact Match (with '==')."
         return True
     elif sympy.srepr(test_expr) == sympy.srepr(target_expr):
-        print "Exact Match"
+        print "Exact Match (with 'srepr')."
         return True
     else:
         return False
 
 
 def symbolic_equality(test_expr, target_expr):
+    """Test if two expressions are symbolically equivalent.
+
+       Use the sympy 'simplify' function to test if the difference between two
+       expressions is symbolically zero. This is known to be impossible in the general
+       case, but should work well enough for most cases likely to be used on Isaac.
+       A return value of 'False' thus does not necessarily mean the two expressions
+       are not equal (sympy assumes complex number variables; so some simlifications
+       may not occur).
+
+       Returns True if sympy can determine that the two expressions are equal,
+       and returns False if this cannot be determined OR if the two expressions
+       are definitely not equal.
+
+        - 'test_expr' should be the untrusted sympy expression to check.
+        - 'target_expr' should be the trusted sympy expression to match against.
+    """
     if sympy.simplify(test_expr - target_expr) == 0:
+        print "Symbolic match."
         print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
         KNOWN_PAIRS[(target_expr, test_expr)] = "symbolic"
         return True
@@ -107,8 +167,8 @@ def factorial(n):
 
        If 'n' is a number of some description, ensure that it is smaller than
        a cutoff, otherwise sympy will simply evaluate it, no matter how long that
-       may take it!
-       - 'n' should be a sympy object, of any description.
+       may take to complete!
+       - 'n' should be a sympy object, that sympy.factorial(...) can use.
     """
     if type(n) in [Integer, Float, Rational] and n > 50:
         raise NumericRangeException("[Factorial]: Too large integer to compute factorial effectively!")
@@ -117,14 +177,25 @@ def factorial(n):
 
 
 def check(test_str, target_str, symbols=None):
+    """The main checking function, calls each of the equality checking functions as required.
+
+       Returns a dict describing the equality; with important keys being 'equal',
+       and 'equality_type'.
+
+        - 'test_str' should be the untrusted string for sympy to parse.
+        - 'target_str' should be the trusted string to parse and match against.
+        - 'symbols' should be a comma separated list of symbols not to split.
+    """
     print "\n\n" + "=" * 50
 
     # These two lines address some security issues - don't use default transformations, and whitelist of functions to match.
     # This can't stop some builtin functions, but hopefully removing "." and "[]" will reduce this problem
-    transforms = (sympy.parsing.sympy_parser.auto_number, sympy.parsing.sympy_parser.auto_symbol, sympy.parsing.sympy_parser.convert_xor, sympy_parser.split_symbols, sympy_parser.implicit_multiplication)
+    transforms = (sympy.parsing.sympy_parser.auto_number, sympy.parsing.sympy_parser.auto_symbol,
+                  sympy.parsing.sympy_parser.convert_xor, sympy_parser.split_symbols, sympy_parser.implicit_multiplication)
     global_dict = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy.Float, "Rational": sympy.Rational,
                    "Mul": sympy.Mul, "Pow": sympy.Pow, "Add": sympy.Add,
-                   "sin": sympy.sin, "cos": sympy.cos, "tan": sympy.tan, "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
+                   "sin": sympy.sin, "cos": sympy.cos, "tan": sympy.tan,
+                   "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
                    "exp": sympy.exp, "log": sympy.log,
                    "sqrt": sympy.sqrt, "abs": sympy.Abs, "factorial": factorial,
                    "iI": sympy.I, "pi": sympy.pi,
@@ -209,6 +280,7 @@ def check(test_str, target_str, symbols=None):
 
 @app.route('/check', methods=["POST"])
 def check_endpoint():
+    """The route Flask uses to submit things to be checked."""
     body = request.get_json(force=True)
 
     if not (("test" in body) and ("target" in body)):
