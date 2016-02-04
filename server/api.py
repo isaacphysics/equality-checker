@@ -15,7 +15,7 @@
 from flask import Flask, request, jsonify, abort
 from sympy.parsing import sympy_parser
 from sympy.printing.latex import latex
-from sympy.core.numbers import Integer
+from sympy.core.numbers import Integer, Float, Rational
 import sympy.abc
 import sympy
 import numpy
@@ -34,7 +34,7 @@ class NumericRangeException(Exception):
 def cleanup_string(string):
     string = re.sub(r'([^0-9])\.([^0-9])', '\g<1> \g<2>', string)  # Allow the . character only surrounded by numbers
     string = string.replace("[", "").replace("]", "")  # This will probably prevent matricies, but good for now
-    string = string.replace("'", "").replace('"', '')
+    string = string.replace("'", "").replace('"', '')  # We don't need these characters
     string = string.replace("lambda", "lamda")  # We can't override the built-in keyword
     return string
 
@@ -51,9 +51,9 @@ def known_equal_pair(test_expr, target_expr):
 
 def numeric_equality(test_expr, target_expr):
     if len(target_expr.free_symbols) == 0:
-        print "No variables in target. Can't be numerically tested."  # Sympy would have caught it if equal
+        print "No variables in target. Can't be numerically tested."  # Sympy symbolic checker would have caught it if equal
         return False
-    if len(test_expr.free_symbols) < len(target_expr.free_symbols):
+    if len(target_expr.free_symbols.difference(test_expr.free_symbols)) > 0:
         print "Not enough variables in test expression. Can't be numerically tested."
         return False
     # Evaluate over a domain, but if the test domain is larger; add in extra dimensions
@@ -84,7 +84,13 @@ def numeric_equality(test_expr, target_expr):
 
 def exact_match(test_expr, target_expr):
     if test_expr == target_expr:
+        print "Exact Match"
         return True
+    elif sympy.srepr(test_expr) == sympy.srepr(target_expr):
+        print "Exact Match"
+        return True
+    else:
+        return False
 
 
 def symbolic_equality(test_expr, target_expr):
@@ -92,31 +98,29 @@ def symbolic_equality(test_expr, target_expr):
         print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
         KNOWN_PAIRS[(target_expr, test_expr)] = "symbolic"
         return True
+    else:
+        return False
 
 
 def factorial(n):
-    """Stop sympy blindly calculating factorials no matter how large."""
-    if type(n) is Integer and n > 50:
-        raise NumericRangeException("Too large integer to compute factorial effectively!")
+    """Stop sympy blindly calculating factorials no matter how large.
+
+       If 'n' is a number of some description, ensure that it is smaller than
+       a cutoff, otherwise sympy will simply evaluate it, no matter how long that
+       may take it!
+       - 'n' should be a sympy object, of any description.
+    """
+    if type(n) in [Integer, Float, Rational] and n > 50:
+        raise NumericRangeException("[Factorial]: Too large integer to compute factorial effectively!")
     else:
         return sympy.factorial(n)
 
 
-@app.route('/check', methods=["POST"])
-def check():
+def check(test_str, target_str, symbols=None):
     print "\n\n" + "=" * 50
-    body = request.get_json(force=True)
-    equality_type = ""
 
-    # We may not want implicit_multiplication or split_symbols; that would allow things like L0 or L_0 as variable names, but would require lots of * signs
-    # But doing this allows executing of some native python functions!!
-    # Say sending "\"=\" * 500000000" will make a really long string.
-    # Or "123456789!" will compute this number to arbitrary precision and take a long long time to return . . .
-    # Also, doing that currently allows arbitrary functions in ".name()" form to be executed!
-
-#    transforms = sympy_parser.standard_transformations + (sympy_parser.split_symbols, sympy_parser.implicit_multiplication)
-
-    # These two lines fix this somewhat - don't use default import, and whitelist of functions to match:
+    # These two lines address some security issues - don't use default transformations, and whitelist of functions to match.
+    # This can't stop some builtin functions, but hopefully removing "." and "[]" will reduce this problem
     transforms = (sympy.parsing.sympy_parser.auto_number, sympy.parsing.sympy_parser.auto_symbol, sympy.parsing.sympy_parser.convert_xor, sympy_parser.split_symbols, sympy_parser.implicit_multiplication)
     global_dict = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy.Float, "Rational": sympy.Rational,
                    "Mul": sympy.Mul, "Pow": sympy.Pow, "Add": sympy.Add,
@@ -126,40 +130,51 @@ def check():
                    "iI": sympy.I, "pi": sympy.pi,
                    "lamda": sympy.abc.lamda}
 
-    if not (("test" in body) and ("target" in body)):
-        print "ERROR: Ill-formed request!"
-        print body
-        abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
-
-    # Prevent splitting of known symbols
+    # Prevent splitting of known symbols (symbols with underscores are left alone by default anyway)
     local_dict = {}
-    if "symbols" in body:
-        for s in str(body["symbols"]).split(","):
+    if symbols is not None:
+        for s in symbols.split(","):
             local_dict[s] = sympy.Symbol(s)
 
+    # Parse the trusted target expression:
     try:
-        target_str = cleanup_string(body["target"])
-        print target_str
+        print "Target string: '%s'" % target_str
         target_expr = sympy_parser.parse_expr(target_str, transformations=transforms, local_dict=local_dict, global_dict=global_dict, evaluate=False)
         parsedTarget = latex(target_expr)
-    except KeyboardInterrupt:#(sympy.parsing.sympy_tokenize.TokenError, SyntaxError, TypeError, AttributeError):
+    except (sympy.parsing.sympy_tokenize.TokenError, SyntaxError, TypeError, AttributeError, NumericRangeException) as e:
         print "ERROR: TRUSTED EXPRESSION INCORRECTLY FORMATTED!"
-        print "Fail: %s" % body["target"]
-        abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
+        print e, e.message
+        print "Fail: %s" % target_str
+        return dict(
+            target=target_str,
+            test=test_str,
+            parsedTarget="FAILED",
+            parsedTest="NOT_PARSED",
+            error="Parsing Target Expression Failed: '%s'" % e,
+            )
 
+    # Parse the untrusted test expression:
     try:
-        test_str = cleanup_string(body["test"])
-        print test_str
+        print "Test string: '%s'" % test_str
         test_expr = sympy_parser.parse_expr(test_str, transformations=transforms, local_dict=local_dict, global_dict=global_dict, evaluate=False)
         parsedTest = latex(test_expr)
-    except KeyboardInterrupt:#(sympy.parsing.sympy_tokenize.TokenError, SyntaxError, TypeError, AttributeError):
+    except (sympy.parsing.sympy_tokenize.TokenError, SyntaxError, TypeError, AttributeError, NumericRangeException) as e:
         print "Incorrectly formatted ToCheck expression."
-        print "Fail: %s" % body["test"]
-        abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
+        print e, e.message
+        print "Fail: %s" % test_str
+        return dict(
+            target=target_str,
+            test=test_str,
+            parsedTarget=parsedTarget,
+            parsedTest="FAILED",
+            error="Parsing Test Expression Failed: '%s'" % e,
+            )
 
+    # Now check for equality:
     try:
         print "Parsed Target: %s\nParsed ToCheck: %s" % (target_expr, test_expr)
 
+        # Test each of the three forms of equality:
         equal, equality_type = known_equal_pair(test_expr, target_expr)
         if not equal:
             equality_type = "exact"
@@ -171,28 +186,47 @@ def check():
             equality_type = "numeric"
             equal = numeric_equality(test_expr, target_expr)
 
-    except KeyboardInterrupt:#(SyntaxError, TypeError, AttributeError):
-        print "Error when comparing expressions."
-        return jsonify(
-            target=body["target"],
-            test=body["test"],
+    except (SyntaxError, TypeError, AttributeError, NumericRangeException), e:
+        print "Error when comparing expressions: '%s'." % e
+        return dict(
+            target=target_str,
+            test=test_str,
             parsedTarget=parsedTarget,
             parsedTest=parsedTest,
-            error="comparison",
+            error="Comparison of expressions failed: '%s'" % e,
             )
-    except NumericRangeException as e:
-        print e.message
-        equal = False
 
     print "Equality: %s" % equal
-    return jsonify(
-        target=body["target"],
-        test=body["test"],
+    return dict(
+        target=target_str,
+        test=test_str,
         parsedTarget=parsedTarget,
         parsedTest=parsedTest,
         equal=str(equal).lower(),
         equality_type=equality_type
         )
+
+
+@app.route('/check', methods=["POST"])
+def check_endpoint():
+    body = request.get_json(force=True)
+
+    if not (("test" in body) and ("target" in body)):
+        print "ERROR: Ill-formed request!"
+        print body
+        abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
+
+    # Cleanup the strings before anything is done to them:
+    target_str = cleanup_string(body["target"])
+    test_str = cleanup_string(body["test"])
+
+    if "symbols" in body:
+        symbols = str(body["symbols"])
+    else:
+        symbols = None
+
+    response_dict = check(test_str, target_str, symbols)
+    return jsonify(**response_dict)
 
 
 ##### Some test code to add some form of persistence to cached pairs #####
