@@ -17,9 +17,9 @@ from sympy.parsing import sympy_parser
 from sympy.printing.latex import latex
 from sympy.core.numbers import Integer
 import sympy.abc
-#from sympy.abc import _clash as sympy_clash
 import sympy
 import numpy
+import re
 #import cPickle
 app = Flask(__name__)
 
@@ -27,12 +27,16 @@ app = Flask(__name__)
 KNOWN_PAIRS = dict()
 
 
-class IncorrectVariablesException(Exception):
-    pass
-
-
 class NumericRangeException(Exception):
     pass
+
+
+def cleanup_string(string):
+    string = re.sub(r'([^0-9])\.([^0-9])', '\g<1> \g<2>', string)  # Allow the . character only surrounded by numbers
+    string = string.replace("[", "").replace("]", "")  # This will probably prevent matricies, but good for now
+    string = string.replace("'", "").replace('"', '')
+    string = string.replace("lambda", "lamda")  # We can't override the built-in keyword
+    return string
 
 
 def known_equal_pair(test_expr, target_expr):
@@ -78,9 +82,12 @@ def numeric_equality(test_expr, target_expr):
         return False
 
 
-def symbolic_equality(test_expr, target_expr):
+def exact_match(test_expr, target_expr):
     if test_expr == target_expr:
         return True
+
+
+def symbolic_equality(test_expr, target_expr):
     if sympy.simplify(test_expr - target_expr) == 0:
         print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
         KNOWN_PAIRS[(target_expr, test_expr)] = "symbolic"
@@ -97,7 +104,7 @@ def factorial(n):
 
 @app.route('/check', methods=["POST"])
 def check():
-    print "\n\n" + "="*50
+    print "\n\n" + "=" * 50
     body = request.get_json(force=True)
     equality_type = ""
 
@@ -112,6 +119,7 @@ def check():
     # These two lines fix this somewhat - don't use default import, and whitelist of functions to match:
     transforms = (sympy.parsing.sympy_parser.auto_number, sympy.parsing.sympy_parser.auto_symbol, sympy.parsing.sympy_parser.convert_xor, sympy_parser.split_symbols, sympy_parser.implicit_multiplication)
     global_dict = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy.Float, "Rational": sympy.Rational,
+                   "Mul": sympy.Mul, "Pow": sympy.Pow, "Add": sympy.Add,
                    "sin": sympy.sin, "cos": sympy.cos, "tan": sympy.tan, "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
                    "exp": sympy.exp, "log": sympy.log,
                    "sqrt": sympy.sqrt, "abs": sympy.Abs, "factorial": factorial,
@@ -123,49 +131,39 @@ def check():
         print body
         abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
 
-
     # Prevent splitting of known symbols
     local_dict = {}
     if "symbols" in body:
         for s in str(body["symbols"]).split(","):
             local_dict[s] = sympy.Symbol(s)
 
-
     try:
-        body["target"] = body["target"].replace("lambda", "lamda")  # We can't override the built-in keyword
-        target_expr = sympy_parser.parse_expr(body["target"], transformations=transforms, local_dict=local_dict, global_dict=global_dict)
+        target_str = cleanup_string(body["target"])
+        print target_str
+        target_expr = sympy_parser.parse_expr(target_str, transformations=transforms, local_dict=local_dict, global_dict=global_dict, evaluate=False)
         parsedTarget = latex(target_expr)
     except KeyboardInterrupt:#(sympy.parsing.sympy_tokenize.TokenError, SyntaxError, TypeError, AttributeError):
         print "ERROR: TRUSTED EXPRESSION INCORRECTLY FORMATTED!"
         print "Fail: %s" % body["target"]
-        return jsonify(
-            target=body["target"],
-            test=body["test"],
-            parsedTarget="Fail: %s" % body["target"],
-            parsedTest="Not parsed: %s" % body["test"],
-            error="target",
-            )
+        abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
 
     try:
-        body["test"] = body["test"].replace("lambda", "lamda")  # We can't override the built-in keyword
-        test_expr = sympy_parser.parse_expr(body["test"], transformations=transforms, local_dict=local_dict, global_dict=global_dict)
+        test_str = cleanup_string(body["test"])
+        print test_str
+        test_expr = sympy_parser.parse_expr(test_str, transformations=transforms, local_dict=local_dict, global_dict=global_dict, evaluate=False)
         parsedTest = latex(test_expr)
-
     except KeyboardInterrupt:#(sympy.parsing.sympy_tokenize.TokenError, SyntaxError, TypeError, AttributeError):
         print "Incorrectly formatted ToCheck expression."
         print "Fail: %s" % body["test"]
-        return jsonify(
-            target=body["target"],
-            test=body["test"],
-            parsedTarget=parsedTarget,
-            parsedTest="Fail: %s" % body["test"],
-            error="test",
-            )
+        abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
 
     try:
         print "Parsed Target: %s\nParsed ToCheck: %s" % (target_expr, test_expr)
 
         equal, equality_type = known_equal_pair(test_expr, target_expr)
+        if not equal:
+            equality_type = "exact"
+            equal = exact_match(test_expr, target_expr)
         if not equal:
             equality_type = "symbolic"
             equal = symbolic_equality(test_expr, target_expr)
@@ -182,9 +180,6 @@ def check():
             parsedTest=parsedTest,
             error="comparison",
             )
-    except IncorrectVariablesException as e:
-        print e.message
-        equal = False
     except NumericRangeException as e:
         print e.message
         equal = False
