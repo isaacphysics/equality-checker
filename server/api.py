@@ -14,6 +14,7 @@
 
 from flask import Flask, request, jsonify, abort
 from sympy.parsing import sympy_parser
+from sympy.assumptions.refine import refine
 from sympy.printing.latex import latex
 from sympy.core.numbers import Integer, Float, Rational
 import sympy.abc
@@ -75,12 +76,13 @@ def numeric_equality(test_expr, target_expr):
         - 'test_expr' should be the untrusted sympy expression to check.
         - 'target_expr' should be the trusted sympy expression to match against.
     """
+    SAMPLE_POINTS = 10
     if len(target_expr.free_symbols.difference(test_expr.free_symbols)) > 0:
-        print "Not enough variables in test expression. Can't be numerically tested."
+        print "Test expression doesn't contain all target expression variables! Can't be numerically tested."
         return False
     # Evaluate over a domain, but if the test domain is larger; add in extra dimensions
-    domain_target = numpy.random.random_sample((len(target_expr.free_symbols), 10))
-    extra_test_freedom = numpy.random.random_sample((len(test_expr.free_symbols) - len(target_expr.free_symbols), 10))
+    domain_target = numpy.random.random_sample((len(target_expr.free_symbols), SAMPLE_POINTS))
+    extra_test_freedom = numpy.random.random_sample((len(test_expr.free_symbols) - len(target_expr.free_symbols), SAMPLE_POINTS))
     domain_test = numpy.concatenate((domain_target, extra_test_freedom))
 
     f_target = sympy.lambdify(target_expr.free_symbols, target_expr, "numpy")
@@ -127,10 +129,10 @@ def exact_match(test_expr, target_expr):
         - 'target_expr' should be the trusted sympy expression to match against.
     """
     if test_expr == target_expr:
-        print "Exact Match (with '==')."
+        print "Exact Match (with '==')"
         return True
     elif sympy.srepr(test_expr) == sympy.srepr(target_expr):
-        print "Exact Match (with 'srepr')."
+        print "Exact Match (with 'srepr')"
         return True
     else:
         return False
@@ -186,7 +188,11 @@ def check(test_str, target_str, symbols=None):
         - 'target_str' should be the trusted string to parse and match against.
         - 'symbols' should be a comma separated list of symbols not to split.
     """
-    print "\n\n" + "=" * 50
+    # If nothing to parse, fail. On server, this will be caught in check_endpoint()
+    if (target_str == "") or (test_str == ""):
+        return dict(error="Empty string as argument.")
+
+    print "=" * 50
 
     # These two lines address some security issues - don't use default transformations, and whitelist of functions to match.
     # This can't stop some builtin functions, but hopefully removing "." and "[]" will reduce this problem
@@ -216,6 +222,7 @@ def check(test_str, target_str, symbols=None):
         print "ERROR: TRUSTED EXPRESSION INCORRECTLY FORMATTED!"
         print e, e.message
         print "Fail: %s" % target_str
+        print "=" * 50
         return dict(
             target=target_str,
             test=test_str,
@@ -233,6 +240,7 @@ def check(test_str, target_str, symbols=None):
         print "Incorrectly formatted ToCheck expression."
         print e, e.message
         print "Fail: %s" % test_str
+        print "=" * 50
         return dict(
             target=target_str,
             test=test_str,
@@ -259,6 +267,7 @@ def check(test_str, target_str, symbols=None):
 
     except (SyntaxError, TypeError, AttributeError, NumericRangeException), e:
         print "Error when comparing expressions: '%s'." % e
+        print "=" * 50
         return dict(
             target=target_str,
             test=test_str,
@@ -268,6 +277,7 @@ def check(test_str, target_str, symbols=None):
             )
 
     print "Equality: %s" % equal
+    print "=" * 50
     return dict(
         target=target_str,
         test=test_str,
@@ -291,6 +301,12 @@ def check_endpoint():
     # Cleanup the strings before anything is done to them:
     target_str = cleanup_string(body["target"])
     test_str = cleanup_string(body["test"])
+    
+    if (target_str == "") or (test_str == ""):
+        print "ERROR: Empty string in request!"
+        print "Target: '%s'\nTest: '%s'" % (target_str, test_str)
+        abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
+        
 
     if "symbols" in body:
         symbols = str(body["symbols"])
