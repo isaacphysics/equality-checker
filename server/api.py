@@ -14,8 +14,7 @@
 
 from flask import Flask, request, jsonify, abort
 from sympy.parsing import sympy_parser
-from sympy.assumptions.refine import refine
-from sympy.printing.latex import latex
+from sympy.assumptions.refine import refine, Q
 from sympy.core.numbers import Integer, Float, Rational
 import sympy.abc
 import sympy
@@ -61,53 +60,15 @@ def known_equal_pair(test_expr, target_expr):
         return (False, "known")
 
 
-def numeric_equality(test_expr, target_expr):
-    """Test if two expressions are numerically equivalent to one another.
-
-       The implementation of this method is liable to change and currently has
-       several major flaws. It will sample the test and target functions over
-       the free parameters of the target expression. If the test expression has
-       more symbols, the parameter space is extended to include these (to test for
-       cases where these parameters make no difference).
-
-       Returns True if the two expressions are equal for the sampled points, and
-       False otherwise.
-
-        - 'test_expr' should be the untrusted sympy expression to check.
-        - 'target_expr' should be the trusted sympy expression to match against.
-    """
-    SAMPLE_POINTS = 10
-    if len(target_expr.free_symbols.difference(test_expr.free_symbols)) > 0:
-        print "Test expression doesn't contain all target expression variables! Can't be numerically tested."
-        return False
-    # Evaluate over a domain, but if the test domain is larger; add in extra dimensions
-    domain_target = numpy.random.random_sample((len(target_expr.free_symbols), SAMPLE_POINTS))
-    extra_test_freedom = numpy.random.random_sample((len(test_expr.free_symbols) - len(target_expr.free_symbols), SAMPLE_POINTS))
-    domain_test = numpy.concatenate((domain_target, extra_test_freedom))
-
-    f_target = sympy.lambdify(target_expr.free_symbols, target_expr, "numpy")
-    eval_f_target = f_target(*domain_target)
-
-    f_test = sympy.lambdify(test_expr.free_symbols, test_expr, "numpy")
-    eval_f_test = f_test(*domain_test)
-    print eval_f_target
-    print eval_f_test
-    numeric_range = numpy.abs(numpy.max(eval_f_target)-numpy.min(eval_f_target))
-    # If the function is wildly different at these points, probably can't reliably conclude anything
-    if numeric_range > 10E10:
-        raise NumericRangeException("Error: Too Large Range, numeric equality test unlikely to be accurate!")
-    # If the function is the same at all of these points, probably can't conclude anything;
-    # Unless the expected result is actually a constant (no free symbols)
-    if (numeric_range < 10E-10) and (len(target_expr.free_symbols) > 0):
-        raise NumericRangeException("Error: Too Small Range, numeric equality test unlikely to be accurate!")
-    diff = numpy.sum(numpy.abs(eval_f_target - eval_f_test))
-    print "Numeric Equality Tested: difference of %.6E" % diff
-    if diff <= (1E-10 * numpy.max(numpy.abs(eval_f_target))):
-        print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
-        KNOWN_PAIRS[(target_expr, test_expr)] = "numeric"
-        return True
-    else:
-        return False
+def parse_expression(expression_str, transforms, local_dict, global_dict):
+    try:
+        parsed_expr = sympy_parser.parse_expr(expression_str, transformations=transforms, local_dict=local_dict, global_dict=global_dict, evaluate=False)
+        return parsed_expr
+    except (sympy.parsing.sympy_tokenize.TokenError, SyntaxError, TypeError, AttributeError, NumericRangeException) as e:
+        print "Incorrectly formatted expression."
+        print e, e.message
+        print "Fail: %s" % expression_str
+        return None
 
 
 def exact_match(test_expr, target_expr):
@@ -164,6 +125,82 @@ def symbolic_equality(test_expr, target_expr):
         return False
 
 
+def numeric_equality(test_expr, target_expr):
+    """Test if two expressions are numerically equivalent to one another.
+
+       The implementation of this method is liable to change and currently has
+       several major flaws. It will sample the test and target functions over
+       the free parameters of the target expression. If the test expression has
+       more symbols, the parameter space is extended to include these (to test for
+       cases where these parameters make no difference).
+
+       Returns True if the two expressions are equal for the sampled points, and
+       False otherwise.
+
+        - 'test_expr' should be the untrusted sympy expression to check.
+        - 'target_expr' should be the trusted sympy expression to match against.
+    """
+    SAMPLE_POINTS = 25
+
+    # If target has variables not in test, then test cannot possibly be equal.
+    # This introduces an asymmetry; target is trusted to only contain necessary symbols,
+    # but test is not.
+    if len(target_expr.free_symbols.difference(test_expr.free_symbols)) > 0:
+        print "Test expression doesn't contain all target expression variables! Can't be numerically tested."
+        return False
+
+    # Evaluate over a domain, but if the test domain is larger; add in extra dimensions
+    # i.e. if target is f(x) but test is g(x, y) then we need to sample over y too
+    # in case it has no effect on the result [say g(x,y) = (y/y) * f(x) , which is
+    # mathematically identical to f(x) but may have been missed by the symbolic part.]
+    domain_target = numpy.random.random_sample((len(target_expr.free_symbols), SAMPLE_POINTS))
+    extra_test_freedom = numpy.random.random_sample((len(test_expr.free_symbols) - len(target_expr.free_symbols), SAMPLE_POINTS))
+    domain_test = numpy.concatenate((domain_target, extra_test_freedom))
+
+    # Make sure that the arguments are given in the same order to lambdify for target and test
+    # to ensure that when numbers are blindly passed in, the same number goes to the same
+    # symbol when evaluated for both test and target.
+    shared_variables = list(target_expr.free_symbols)  # We ensured above that all symbols in target are in test also
+    extra_test_variables = list(test_expr.free_symbols.difference(target_expr.free_symbols))
+    test_variables = shared_variables + extra_test_variables
+
+    # Make the target expression into something numpy can evaluate, then evaluate
+    # for the ten points. This *should* now be safe, but still could be dangerous.
+    f_target = sympy.lambdify(shared_variables, target_expr, "numpy")
+    eval_f_target = f_target(*domain_target)
+
+    # Repeat for the test expression, to get an array of containing SAMPLE_POINTS
+    # values of test_expr to be compared to target_expr
+    f_test = sympy.lambdify(test_variables, test_expr, "numpy")
+    eval_f_test = f_test(*domain_test)
+
+    # Output the function values at the sample points for debugging?
+    # The actual domain arrays are probably too long to be worth ever printing.
+    print eval_f_target
+    print eval_f_test
+
+    # Do some numeric sanity checking; 64-bit floating points are not perfect.
+    numeric_range = numpy.abs(numpy.max(eval_f_target)-numpy.min(eval_f_target))
+    # If the function is wildly different at these points, probably can't reliably conclude anything
+    if numeric_range > 10E10:
+        raise NumericRangeException("Error: Too Large Range, numeric equality test unlikely to be accurate!")
+    # If the function is the same at all of these points, probably can't conclude anything;
+    # Unless the expected result is actually a constant (no free symbols)
+    if (numeric_range < 10E-10) and (len(target_expr.free_symbols) > 0):
+        raise NumericRangeException("Error: Too Small Range, numeric equality test unlikely to be accurate!")
+
+    # Calculate the difference between the two arrays, if it is less than 10E-8% of
+    # the largest value in the target function; the two things are probably equal!
+    diff = numpy.sum(numpy.abs(eval_f_target - eval_f_test))
+    print "Numeric Equality Tested: difference of %.6E" % diff
+    if diff <= (1E-10 * numpy.max(numpy.abs(eval_f_target))):
+        print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
+        KNOWN_PAIRS[(target_expr, test_expr)] = "numeric"
+        return True
+    else:
+        return False
+
+
 def factorial(n):
     """Stop sympy blindly calculating factorials no matter how large.
 
@@ -214,40 +251,32 @@ def check(test_str, target_str, symbols=None):
             local_dict[s] = sympy.Symbol(s)
 
     # Parse the trusted target expression:
-    try:
-        print "Target string: '%s'" % target_str
-        target_expr = sympy_parser.parse_expr(target_str, transformations=transforms, local_dict=local_dict, global_dict=global_dict, evaluate=False)
-        parsedTarget = latex(target_expr)
-    except (sympy.parsing.sympy_tokenize.TokenError, SyntaxError, TypeError, AttributeError, NumericRangeException) as e:
-        print "ERROR: TRUSTED EXPRESSION INCORRECTLY FORMATTED!"
-        print e, e.message
-        print "Fail: %s" % target_str
+    print "Target string: '%s'" % target_str
+    target_expr = parse_expression(target_str, transforms=transforms, local_dict=local_dict, global_dict=global_dict)
+    # Parse the untrusted test expression:
+    print "Test string: '%s'" % test_str
+    test_expr = parse_expression(test_str, transforms=transforms, local_dict=local_dict, global_dict=global_dict)
+
+    if target_expr is None:
+        print "ERROR: TRUSTED EXPRESSION CANNOT BE PARSED!"
         print "=" * 50
         return dict(
             target=target_str,
             test=test_str,
-            parsedTarget="FAILED",
-            parsedTest="NOT_PARSED",
-            error="Parsing Target Expression Failed: '%s'" % e,
+            error="Parsing Target Expression Failed.",
+            )
+    if test_expr is None:
+        print "Incorrectly formatted ToCheck expression."
+        print "=" * 50
+        return dict(
+            target=target_str,
+            test=test_str,
+            error="Parsing Test Expression Failed.",
             )
 
-    # Parse the untrusted test expression:
-    try:
-        print "Test string: '%s'" % test_str
-        test_expr = sympy_parser.parse_expr(test_str, transformations=transforms, local_dict=local_dict, global_dict=global_dict, evaluate=False)
-        parsedTest = latex(test_expr)
-    except (sympy.parsing.sympy_tokenize.TokenError, SyntaxError, TypeError, AttributeError, NumericRangeException) as e:
-        print "Incorrectly formatted ToCheck expression."
-        print e, e.message
-        print "Fail: %s" % test_str
-        print "=" * 50
-        return dict(
-            target=target_str,
-            test=test_str,
-            parsedTarget=parsedTarget,
-            parsedTest="FAILED",
-            error="Parsing Test Expression Failed: '%s'" % e,
-            )
+# This would allow assumptions to be made, say to simplify sqrt(x**2) iff x e R and x > 0
+#    for x in test_expr.free_symbols:
+#        test_expr = refine(test_expr, Q.positive(x))
 
     # Now check for equality:
     try:
@@ -271,8 +300,8 @@ def check(test_str, target_str, symbols=None):
         return dict(
             target=target_str,
             test=test_str,
-            parsedTarget=parsedTarget,
-            parsedTest=parsedTest,
+            parsedTarget=str(target_expr),
+            parsedTest=str(test_expr),
             error="Comparison of expressions failed: '%s'" % e,
             )
 
@@ -281,8 +310,8 @@ def check(test_str, target_str, symbols=None):
     return dict(
         target=target_str,
         test=test_str,
-        parsedTarget=parsedTarget,
-        parsedTest=parsedTest,
+        parsedTarget=str(target_expr),
+        parsedTest=str(test_expr),
         equal=str(equal).lower(),
         equality_type=equality_type
         )
@@ -301,12 +330,11 @@ def check_endpoint():
     # Cleanup the strings before anything is done to them:
     target_str = cleanup_string(body["target"])
     test_str = cleanup_string(body["test"])
-    
+
     if (target_str == "") or (test_str == ""):
         print "ERROR: Empty string in request!"
         print "Target: '%s'\nTest: '%s'" % (target_str, test_str)
         abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
-        
 
     if "symbols" in body:
         symbols = str(body["symbols"])
@@ -315,6 +343,11 @@ def check_endpoint():
 
     response_dict = check(test_str, target_str, symbols)
     return jsonify(**response_dict)
+
+
+if __name__ == '__main__':
+    app.run(port=5000, host="0.0.0.0", debug=True)
+
 
 
 ##### Some test code to add some form of persistence to cached pairs #####
@@ -335,9 +368,6 @@ def check_endpoint():
 #    with open("/equality_checker/KNOWNS.pickle", "a") as f:
 #        KNOWN_PAIRS = cPickle.load(f)
 #    return "Loaded!"
-
-if __name__ == '__main__':
-    app.run(port=5000, host="0.0.0.0", debug=True)
 
 
 ##### Some test code to implement different limits on the sample space #####
