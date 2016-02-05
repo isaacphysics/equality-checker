@@ -239,6 +239,21 @@ class TestEqualityChecker(unittest.TestCase):
         self.assertTrue(response["equality_type"] == "numeric", 'For these expressions, expected "equality_type" to be "numeric", got "%s"!' % response["equality_type"])
         print "   PASS   ".center(75, "#")
 
+    def test_large_bracket_expression(self):
+        print "\n\n\n" + " Test Lots of Brackets and ^ in Expression ".center(75, "#")
+        test_str = "720 + 1764 x + 1624 x^2 + 735 x^3 + 175 x^4 + 21 x^5 + x^6"
+        target_str = "(x+1)(x+2)(x+3)(x+4)(x+5)(x+6)"
+        symbols = None
+        response = api.check(test_str, target_str, symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "%s"!' % response["equal"])
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
+        self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "%s"!' % response["equality_type"])
+        print "   PASS   ".center(75, "#")
+
 
 if __name__ == '__main__':
     unittest.main()
