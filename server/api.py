@@ -89,6 +89,7 @@ def exact_match(test_expr, target_expr):
         - 'test_expr' should be the untrusted sympy expression to check.
         - 'target_expr' should be the trusted sympy expression to match against.
     """
+    print "[EXACT TEST]"
     if test_expr == target_expr:
         print "Exact Match (with '==')"
         return True
@@ -116,9 +117,10 @@ def symbolic_equality(test_expr, target_expr):
         - 'test_expr' should be the untrusted sympy expression to check.
         - 'target_expr' should be the trusted sympy expression to match against.
     """
+    print "[SYMBOLIC TEST]"
     if sympy.simplify(test_expr - target_expr) == 0:
         print "Symbolic match."
-        print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
+        print "Adding known pair (%s, %s)" % (target_expr, test_expr)
         KNOWN_PAIRS[(target_expr, test_expr)] = "symbolic"
         return True
     else:
@@ -140,6 +142,7 @@ def numeric_equality(test_expr, target_expr):
         - 'test_expr' should be the untrusted sympy expression to check.
         - 'target_expr' should be the trusted sympy expression to match against.
     """
+    print "[NUMERIC TEST]"
     SAMPLE_POINTS = 25
 
     # If target has variables not in test, then test cannot possibly be equal.
@@ -201,6 +204,21 @@ def numeric_equality(test_expr, target_expr):
         return False
 
 
+def equality(test_expr, target_expr):
+    # Test each of the three forms of equality:
+    equal, equality_type = known_equal_pair(test_expr, target_expr)
+    if not equal:
+        equality_type = "exact"
+        equal = exact_match(test_expr, target_expr)
+    if not equal:
+        equality_type = "symbolic"
+        equal = symbolic_equality(test_expr, target_expr)
+    if not equal:
+        equality_type = "numeric"
+        equal = numeric_equality(test_expr, target_expr)
+    return equal, equality_type
+
+
 def factorial(n):
     """Stop sympy blindly calculating factorials no matter how large.
 
@@ -241,7 +259,7 @@ def check(test_str, target_str, symbols=None):
                    "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
                    "exp": sympy.exp, "log": sympy.log,
                    "sqrt": sympy.sqrt, "abs": sympy.Abs, "factorial": factorial,
-                   "iI": sympy.I, "pi": sympy.pi,
+                   "iI": sympy.I, "pi": sympy.pi, "eE": sympy.E,
                    "lamda": sympy.abc.lamda}
 
     # Prevent splitting of known symbols (symbols with underscores are left alone by default anyway)
@@ -281,19 +299,7 @@ def check(test_str, target_str, symbols=None):
     # Now check for equality:
     try:
         print "Parsed Target: %s\nParsed ToCheck: %s" % (target_expr, test_expr)
-
-        # Test each of the three forms of equality:
-        equal, equality_type = known_equal_pair(test_expr, target_expr)
-        if not equal:
-            equality_type = "exact"
-            equal = exact_match(test_expr, target_expr)
-        if not equal:
-            equality_type = "symbolic"
-            equal = symbolic_equality(test_expr, target_expr)
-        if not equal:
-            equality_type = "numeric"
-            equal = numeric_equality(test_expr, target_expr)
-
+        equal, equality_type = equality(test_expr, target_expr)
     except (SyntaxError, TypeError, AttributeError, NumericRangeException), e:
         print "Error when comparing expressions: '%s'." % e
         print "=" * 50
