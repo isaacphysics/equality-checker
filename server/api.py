@@ -13,6 +13,8 @@
 # limitations under the License.
 
 from flask import Flask, request, jsonify, abort
+from werkzeug.exceptions import default_exceptions
+from werkzeug.exceptions import HTTPException
 from sympy.parsing import sympy_parser
 from sympy.assumptions.refine import refine, Q
 from sympy.core.numbers import Integer, Float, Rational
@@ -323,6 +325,18 @@ def check(test_str, target_str, symbols=None):
         )
 
 
+def make_json_error(ex):
+    """Return JSON error pages, not HTML!
+
+       Using a method suggested in http://flask.pocoo.org/snippets/83/, convert
+       all outgoing errors into JSON format.
+    """
+    status_code = ex.code if isinstance(ex, HTTPException) else 500
+    response = jsonify(message=str(ex), code=status_code, error=type(ex).__name__)
+    response.status_code = (status_code)
+    return response
+
+
 @app.route('/check', methods=["POST"])
 def check_endpoint():
     """The route Flask uses to submit things to be checked."""
@@ -352,7 +366,12 @@ def check_endpoint():
 
 
 if __name__ == '__main__':
-    app.run(port=5000, host="0.0.0.0", debug=True)
+    # Make sure all outgoing error messages are in JSON format.
+    # This will only work provided debug=False - otherwise the debugger hijacks them!
+    for code in default_exceptions.iterkeys():
+        app.error_handler_spec[None][code] = make_json_error
+    # Then run the app
+    app.run(port=5000, host="0.0.0.0", debug=False)
 
 
 
