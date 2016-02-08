@@ -63,6 +63,20 @@ def known_equal_pair(test_expr, target_expr):
 
 
 def parse_expression(expression_str, transforms, local_dict, global_dict):
+    """Take a string containing a mathematical expression and return a sympy expression.
+
+       Use sympy's parse_expr(...) function to take the string and convert it to
+       a usable format. This presents risks with parsing builtin functions or mathods.
+       So apply some transforms to broaden what we can accept, use a dictionary to
+       override Python's global namespace, and a local dict of symbols not to split.
+        - 'expression_str' should be the string to parse.
+        - 'transforms' must be a tuple of sympy transformations.
+        - 'local_dict' can be a dictionary of (name, sympy.Symbol(...)) pairs, where
+          the string 'name' will not be split up and will be turned into the symbol
+          specified. It may be empty.
+        - 'global_dict' must be a dictionary mapping string function names to the
+          actual functions they will call when evaluated.
+    """
     try:
         parsed_expr = sympy_parser.parse_expr(expression_str, transformations=transforms, local_dict=local_dict, global_dict=global_dict, evaluate=False)
         return parsed_expr
@@ -120,6 +134,9 @@ def symbolic_equality(test_expr, target_expr):
         - 'target_expr' should be the trusted sympy expression to match against.
     """
     print "[SYMBOLIC TEST]"
+    # This would allow assumptions to be made, say to simplify sqrt(x**2) iff x e R and x > 0
+#    for x in test_expr.free_symbols:
+#        test_expr = refine(test_expr, Q.positive(x))
     if sympy.simplify(test_expr - target_expr) == 0:
         print "Symbolic match."
         print "Adding known pair (%s, %s)" % (target_expr, test_expr)
@@ -207,6 +224,11 @@ def numeric_equality(test_expr, target_expr):
 
 
 def equality(test_expr, target_expr):
+    """Given two sympy expressions: test for exact, symbolic and numeric equality.
+
+        - 'test_expr' should be the untrusted sympy expression to check.
+        - 'target_expr' should be the trusted sympy expression to match against.
+    """
     # Test each of the three forms of equality:
     equal, equality_type = known_equal_pair(test_expr, target_expr)
     if not equal:
@@ -293,10 +315,6 @@ def check(test_str, target_str, symbols=None):
             test=test_str,
             error="Parsing Test Expression Failed.",
             )
-
-# This would allow assumptions to be made, say to simplify sqrt(x**2) iff x e R and x > 0
-#    for x in test_expr.free_symbols:
-#        test_expr = refine(test_expr, Q.positive(x))
 
     # Now check for equality:
     try:
