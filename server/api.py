@@ -253,7 +253,7 @@ def factorial(n):
        may take to complete!
        - 'n' should be a sympy object, that sympy.factorial(...) can use.
     """
-    if type(n) in [Integer, Float, Rational] and n > 50:
+    if isinstance(n, (Integer, Float, Rational)) and n > 50:
         raise NumericRangeException("[Factorial]: Too large integer to compute factorial effectively!")
     else:
         return sympy.factorial(n)
