@@ -23,6 +23,8 @@ import sympy
 import numpy
 import re
 #import cPickle
+
+__all__ = ["check"]
 app = Flask(__name__)
 
 
@@ -381,6 +383,11 @@ def check_endpoint():
 
     response_dict = check(test_str, target_str, symbols)
     return jsonify(**response_dict)
+
+
+@app.route('/', methods=["GET"])
+def ping():
+    return jsonify(code=200)
 
 
 if __name__ == '__main__':
