@@ -43,6 +43,7 @@ def cleanup_string(string):
        sympy; try and remove the worst offending things from strings.
     """
     string = re.sub(r'([^0-9])\.([^0-9])', '\g<1> \g<2>', string)  # Allow the . character only surrounded by numbers
+    string = string.replace("__", " ")  # We don't need double underscores, exploits do
     string = string.replace("[", "").replace("]", "")  # This will probably prevent matricies, but good for now
     string = string.replace("'", "").replace('"', '')  # We don't need these characters
     string = string.replace("lambda", "lamda")  # We can't override the built-in keyword
@@ -283,6 +284,8 @@ def check(test_str, target_str, symbols=None):
                    "Mul": sympy.Mul, "Pow": sympy.Pow, "Add": sympy.Add,
                    "sin": sympy.sin, "cos": sympy.cos, "tan": sympy.tan,
                    "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
+                   "sinh": sympy.sinh, "cosh": sympy.cosh, "tanh": sympy.tanh,
+                   "sec": sympy.sec, "cosec": sympy.csc, "cot": sympy.cot,
                    "exp": sympy.exp, "log": sympy.log,
                    "sqrt": sympy.sqrt, "abs": sympy.Abs, "factorial": factorial,
                    "iI": sympy.I, "pi": sympy.pi, "eE": sympy.E,
