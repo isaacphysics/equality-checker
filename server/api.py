@@ -102,7 +102,7 @@ def contains_incorrect_symbols(test_expr, target_expr):
     """
     print "[SYMBOL CHECK]"
     if test_expr.free_symbols != target_expr.free_symbols:
-        print "Symbol mismatch between test and target"
+        print "Symbol mismatch between test and target!"
         result = dict()
         missing = ",".join(map(str, (list(target_expr.free_symbols.difference(test_expr.free_symbols)))))
         extra = ",".join(map(str, list(test_expr.free_symbols.difference(target_expr.free_symbols))))
@@ -291,7 +291,7 @@ def factorial(n):
         return sympy.factorial(n)
 
 
-def check(test_str, target_str, symbols=None, check_symbols=True):
+def check(test_str, target_str, symbols=None, check_symbols=True, description=None):
     """The main checking function, calls each of the equality checking functions as required.
 
        Returns a dict describing the equality; with important keys being 'equal',
@@ -310,6 +310,10 @@ def check(test_str, target_str, symbols=None, check_symbols=True):
         return dict(error="Empty string as argument.")
 
     print "=" * 50
+    # For logging purposes, if we have a description: print it!
+    if description is not None:
+        print description
+        print "=" * 50
 
     # These two lines address some security issues - don't use default transformations, and whitelist of functions to match.
     # This can't stop some builtin functions, but hopefully removing "." and "[]" will reduce this problem
@@ -362,6 +366,8 @@ def check(test_str, target_str, symbols=None, check_symbols=True):
         if check_symbols:  # Do we have same set of symbols in each?
             incorrect_symbols = contains_incorrect_symbols(test_expr, target_expr)
             if incorrect_symbols is not None:
+                print "Enforcing strict symbol match for correctness!\nEquality: False"
+                print "=" * 50
                 return dict(
                     target=target_str,
                     test=test_str,
@@ -437,7 +443,12 @@ def check_endpoint():
     else:
         check_symbols = True
 
-    response_dict = check(test_str, target_str, symbols, check_symbols)
+    if "description" in body:
+        description = str(body["description"])
+    else:
+        description = None
+
+    response_dict = check(test_str, target_str, symbols, check_symbols, description)
     return jsonify(**response_dict)
 
 
