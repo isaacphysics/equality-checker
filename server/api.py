@@ -43,10 +43,10 @@ def cleanup_string(string):
        sympy; try and remove the worst offending things from strings.
     """
     string = re.sub(r'([^0-9])\.([^0-9])', '\g<1> \g<2>', string)  # Allow the . character only surrounded by numbers
-    string = string.replace("__", " ")  # We don't need double underscores, exploits do
     string = string.replace("[", "").replace("]", "")  # This will probably prevent matricies, but good for now
     string = string.replace("'", "").replace('"', '')  # We don't need these characters
-    string = string.replace("lambda", "lamda")  # We can't override the built-in keyword
+    string = string.replace("lambda", "lamda").replace("Lambda", "Lamda")  # We can't override the built-in keyword
+    string = string.replace("__", " ")  # We don't need double underscores, exploits do
     return string
 
 
@@ -87,6 +87,35 @@ def parse_expression(expression_str, transforms, local_dict, global_dict):
         print "Incorrectly formatted expression."
         print "ERROR: ", e, e.message
         print "Fail: '%s'." % expression_str
+        return None
+
+
+def contains_incorrect_symbols(test_expr, target_expr):
+    """Test if the entered expression contains exactly the same symbols as the target.
+
+       Sometimes expressions can be mathematically identical to one another, but
+       contain different symbols. From a pure maths standpoint, this is fine; but
+       in questions you may not want to allow undefined symbols. This function will
+       return a dict containing entries for any extra/missing symbols.
+        - 'test_expr' should be the untrusted sympy expression to check symbols from.
+        - 'target_expr' should be the trusted sympy expression to match symbols to.
+    """
+    print "[SYMBOL CHECK]"
+    if test_expr.free_symbols != target_expr.free_symbols:
+        print "Symbol mismatch between test and target"
+        result = dict()
+        missing = ",".join(map(str, (list(target_expr.free_symbols.difference(test_expr.free_symbols)))))
+        extra = ",".join(map(str, list(test_expr.free_symbols.difference(target_expr.free_symbols))))
+        missing = missing.replace("lamda", "lambda").replace("Lamda", "Lambda")
+        extra = extra.replace("lamda", "lambda").replace("Lamda", "Lambda")
+        if len(missing) > 0:
+            print "Test Expression missing: %s" % missing
+            result["missing"] = missing
+        if len(extra) > 0:
+            print "Test Expression has extra: %s" % extra
+            result["extra"] = extra
+        return result
+    else:
         return None
 
 
@@ -137,9 +166,11 @@ def symbolic_equality(test_expr, target_expr):
         - 'target_expr' should be the trusted sympy expression to match against.
     """
     print "[SYMBOLIC TEST]"
-    # This would allow assumptions to be made, say to simplify sqrt(x**2) iff x e R and x > 0
+#    # This would allow assumptions to be made, say to simplify sqrt(x**2) iff x e R and x > 0
+#    # Or to expand logarithms and apply the laws of logs (forcing avoids complex number issues)
 #    for x in test_expr.free_symbols:
-#        test_expr = refine(test_expr, Q.positive(x))
+#        test_expr = refine(test_expr, Q.positive(x))  # Probably don't want to actually change
+#        test_expr = sympy.expand_log(test_expr, force=True)  # the test expression, but a copy.
     if sympy.simplify(test_expr - target_expr) == 0:
         print "Symbolic match."
         print "Adding known pair (%s, %s)" % (target_expr, test_expr)
@@ -260,7 +291,7 @@ def factorial(n):
         return sympy.factorial(n)
 
 
-def check(test_str, target_str, symbols=None):
+def check(test_str, target_str, symbols=None, check_symbols=True):
     """The main checking function, calls each of the equality checking functions as required.
 
        Returns a dict describing the equality; with important keys being 'equal',
@@ -269,6 +300,10 @@ def check(test_str, target_str, symbols=None):
         - 'test_str' should be the untrusted string for sympy to parse.
         - 'target_str' should be the trusted string to parse and match against.
         - 'symbols' should be a comma separated list of symbols not to split.
+        - 'check_symbols' indicates whether to verfiy the symbols used in each
+           expression are exactly the same or not; setting this to False will
+           allow symbols which cancel out to be included (probably don't want this
+           in questions).
     """
     # If nothing to parse, fail. On server, this will be caught in check_endpoint()
     if (target_str == "") or (test_str == ""):
@@ -288,7 +323,7 @@ def check(test_str, target_str, symbols=None):
                    "sec": sympy.sec, "cosec": sympy.csc, "cot": sympy.cot,
                    "exp": sympy.exp, "log": sympy.log,
                    "sqrt": sympy.sqrt, "abs": sympy.Abs, "factorial": factorial,
-                   "iI": sympy.I, "pi": sympy.pi, "eE": sympy.E,
+                   "iI": sympy.I, "piPI": sympy.pi, "eE": sympy.E,
                    "lamda": sympy.abc.lamda}
 
     # Prevent splitting of known symbols (symbols with underscores are left alone by default anyway)
@@ -321,9 +356,22 @@ def check(test_str, target_str, symbols=None):
             error="Parsing Test Expression Failed.",
             )
 
-    # Now check for equality:
+    # Now check for symbol match and equality:
     try:
         print "Parsed Target: %s\nParsed ToCheck: %s" % (target_expr, test_expr)
+        if check_symbols:  # Do we have same set of symbols in each?
+            incorrect_symbols = contains_incorrect_symbols(test_expr, target_expr)
+            if incorrect_symbols is not None:
+                return dict(
+                    target=target_str,
+                    test=test_str,
+                    parsedTarget=str(target_expr),
+                    parsedTest=str(test_expr),
+                    equal=str(False).lower(),
+                    equality_type="symbolic",
+                    incorrect_symbols=incorrect_symbols,
+                )
+        # Then check for equality
         equal, equality_type = equality(test_expr, target_expr)
     except (SyntaxError, TypeError, AttributeError, NumericRangeException), e:
         print "Error when comparing expressions: '%s'." % e
@@ -384,7 +432,12 @@ def check_endpoint():
     else:
         symbols = None
 
-    response_dict = check(test_str, target_str, symbols)
+    if "check_symbols" in body:
+        check_symbols = str(body["check_symbols"]).lower() == "true"
+    else:
+        check_symbols = True
+
+    response_dict = check(test_str, target_str, symbols, check_symbols)
     return jsonify(**response_dict)
 
 
