@@ -1,5 +1,5 @@
 # equality-checker
-Tiny server for testing equivalence of two symbolic expressions.
+Not quite so tiny any more server for testing equivalence of two symbolic expressions.
 
 ## Installation / Setup instructions
 ### Dev Project setup (Windows)
@@ -11,7 +11,7 @@ Tiny server for testing equivalence of two symbolic expressions.
 6. Then go to equality-checker directory `cd /equality-checker`
 7. Run `./run-docker.sh` to launch the server
 
-Your server should be running on port `http://localhost:9090/check`
+Your server should be running on port `http://localhost:5000/check`
 
 ### Production
 Deploy to dockerhub: `docker push ucamcldtg/equality-checker`
