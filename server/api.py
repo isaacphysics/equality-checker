@@ -29,6 +29,10 @@ app = Flask(__name__)
 
 
 KNOWN_PAIRS = dict()
+RELATIONS_REGEX = re.compile('(.*?)(=|<=|>=|<|>)(.*)')
+# Hack functions that would give NaN to use complex values by adding 0i (denoted 0j in numpy!) to their input:
+NUMPY_MISSING_FN = {"csc": lambda x: 1/numpy.sin(x+0j), "sec": lambda x: 1/numpy.cos(x+0j), "cot": lambda x: 1/numpy.tan(x+0j),
+                    "acsc": lambda x: numpy.arcsin(numpy.power(x+0j, -1)), "asec": lambda x: numpy.arccos(numpy.power(x+0j, -1)), "acot": lambda x: numpy.arctan(numpy.power(x+0j, -1))}
 
 
 class NumericRangeException(Exception):
@@ -173,7 +177,7 @@ def symbolic_equality(test_expr, target_expr):
 #        test_expr = sympy.expand_log(test_expr, force=True)  # the test expression, but a copy.
     if sympy.simplify(test_expr - target_expr) == 0:
         print "Symbolic match."
-        print "Adding known pair (%s, %s)" % (target_expr, test_expr)
+        print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
         KNOWN_PAIRS[(target_expr, test_expr)] = "symbolic"
         return True
     else:
@@ -222,33 +226,40 @@ def numeric_equality(test_expr, target_expr):
 
     # Make the target expression into something numpy can evaluate, then evaluate
     # for the ten points. This *should* now be safe, but still could be dangerous.
-    f_target = sympy.lambdify(shared_variables, target_expr, "numpy")
+    f_target = sympy.lambdify(shared_variables, target_expr, ["numpy", NUMPY_MISSING_FN])
     eval_f_target = f_target(*domain_target)
 
     # Repeat for the test expression, to get an array of containing SAMPLE_POINTS
     # values of test_expr to be compared to target_expr
-    f_test = sympy.lambdify(test_variables, test_expr, "numpy")
+    f_test = sympy.lambdify(test_variables, test_expr, ["numpy", NUMPY_MISSING_FN])
     eval_f_test = f_test(*domain_test)
 
     # Output the function values at the sample points for debugging?
     # The actual domain arrays are probably too long to be worth ever printing.
+    print "Target function value(s):"
     print eval_f_target
+    print "Test function value(s):"
     print eval_f_test
+
+    # If we get any NaN's from the functions; we've gone horribly wrong!
+    if numpy.any(numpy.isnan(eval_f_target)) or numpy.any(numpy.isnan(eval_f_test)):
+        raise NumericRangeException("A function in the test or target expression is undefined in the interval [0,1).")
 
     # Do some numeric sanity checking; 64-bit floating points are not perfect.
     numeric_range = numpy.abs(numpy.max(eval_f_target)-numpy.min(eval_f_target))
     # If the function is wildly different at these points, probably can't reliably conclude anything
     if numeric_range > 10E10:
-        raise NumericRangeException("Error: Too Large Range, numeric equality test unlikely to be accurate!")
+        raise NumericRangeException("Too Large Range, numeric equality test unlikely to be accurate!")
     # If the function is the same at all of these points, probably can't conclude anything;
     # Unless the expected result is actually a constant (no free symbols)
     if (numeric_range < 10E-10) and (len(target_expr.free_symbols) > 0):
-        raise NumericRangeException("Error: Too Small Range, numeric equality test unlikely to be accurate!")
+        raise NumericRangeException("Too Small Range, numeric equality test unlikely to be accurate!")
 
     # Calculate the difference between the two arrays, if it is less than 10E-8% of
     # the largest value in the target function; the two things are probably equal!
+    # This will cope perfectly with complex numbers too!
     diff = numpy.sum(numpy.abs(eval_f_target - eval_f_test))
-    print "Numeric Equality Tested: difference of %.6E" % diff
+    print "Numeric Equality Tested: absolute difference of %.6E" % diff
     if diff <= (1E-10 * numpy.max(numpy.abs(eval_f_target))):
         print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
         KNOWN_PAIRS[(target_expr, test_expr)] = "numeric"
@@ -295,15 +306,18 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
     """The main checking function, calls each of the equality checking functions as required.
 
        Returns a dict describing the equality; with important keys being 'equal',
-       and 'equality_type'.
+       and 'equality_type'. The key 'error' is added if something went wrong, and
+       this should always be checked for first.
 
         - 'test_str' should be the untrusted string for sympy to parse.
         - 'target_str' should be the trusted string to parse and match against.
         - 'symbols' should be a comma separated list of symbols not to split.
         - 'check_symbols' indicates whether to verfiy the symbols used in each
-           expression are exactly the same or not; setting this to False will
-           allow symbols which cancel out to be included (probably don't want this
-           in questions).
+          expression are exactly the same or not; setting this to False will
+          allow symbols which cancel out to be included (probably don't want this
+          in questions).
+        - 'description' is an optional description to print before the checker's
+          output to stdout which can be used to improve logging.
     """
     # If nothing to parse, fail. On server, this will be caught in check_endpoint()
     if (target_str == "") or (test_str == ""):
@@ -324,8 +338,10 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
                    "sin": sympy.sin, "cos": sympy.cos, "tan": sympy.tan,
                    "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
                    "sinh": sympy.sinh, "cosh": sympy.cosh, "tanh": sympy.tanh,
-                   "sec": sympy.sec, "cosec": sympy.csc, "cot": sympy.cot,
-                   "exp": sympy.exp, "log": sympy.log,
+                   "arcsinh": sympy.asinh, "arccosh": sympy.acosh, "arctanh": sympy.atanh,
+                   "cosec": sympy.csc, "sec": sympy.sec, "cot": sympy.cot,
+                   "arccosec": sympy.acsc, "arcsec": sympy.asec, "arccot": sympy.acot,
+                   "exp": sympy.exp, "log": sympy.log, "ln": sympy.ln,
                    "sqrt": sympy.sqrt, "abs": sympy.Abs, "factorial": factorial,
                    "iI": sympy.I, "piPI": sympy.pi, "eE": sympy.E,
                    "lamda": sympy.abc.lamda}
@@ -336,12 +352,62 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
         for s in symbols.split(","):
             local_dict[s] = sympy.Symbol(s)
 
-    # Parse the trusted target expression:
     print "Target string: '%s'" % target_str
-    target_expr = parse_expression(target_str, transforms=transforms, local_dict=local_dict, global_dict=global_dict)
-    # Parse the untrusted test expression:
     print "Test string: '%s'" % test_str
-    test_expr = parse_expression(test_str, transforms=transforms, local_dict=local_dict, global_dict=global_dict)
+    # Are we dealing with equations? If so, do stuff differently!
+    target_groups = RELATIONS_REGEX.match(target_str)  # Group 1 is the LHS, Group 2 the relation
+    test_groups = RELATIONS_REGEX.match(test_str)      # and Group 3 the RHS
+    print "[EQUATION CHECK]"
+    equation = False
+    if (target_groups is not None) and (test_groups is not None):
+        if target_groups.group(1) == test_groups.group(1):  # LHS1 == LHS2
+            print "Equation matching required: compare RHS to RHS."
+            equation = True
+            target_parse_str = target_groups.group(3)
+            test_parse_str = test_groups.group(3)
+        elif target_groups.group(1) == test_groups.group(3):  # LHS1 == RHS2
+            print "Equation matching required: compare RHS to LHS."
+            equation = True
+            target_parse_str = target_groups.group(3)
+            test_parse_str = test_groups.group(1)
+        else:  # No match!
+            print "ERROR: Equations do not match!"
+            print "=" * 50
+            return dict(
+                target=target_str,
+                test=test_str,
+                error="Can't match right now!",
+                )
+    elif (target_groups is None) and (test_groups is None):  # No equation
+        target_parse_str = target_str
+        test_parse_str = test_str
+    else:  # Equation/expression mismatch!
+        print "ERROR: Equation/expression mismatch!"
+        print "=" * 50
+        return dict(
+            target=target_str,
+            test=test_str,
+            error="Expression/Equation mismatch between target and test!",
+            )
+    if equation and (target_groups.group(2) != test_groups.group(2)):
+        print "Equation relation mismatch!\nEquality: False"
+        print "=" * 50
+        return dict(
+            target=target_str,
+            test=test_str,
+            equal=str(False).lower(),
+            equality_type="symbolic",
+            incorrect_relation=dict(
+                    extra=test_groups.group(2),
+                    missing=target_groups.group(2)
+                    )
+            )
+
+    print "[PARSE EXPRESSIONS]"
+    # Parse the trusted target expression:
+    target_expr = parse_expression(target_parse_str, transforms=transforms, local_dict=local_dict, global_dict=global_dict)
+    # Parse the untrusted test expression:
+    test_expr = parse_expression(test_parse_str, transforms=transforms, local_dict=local_dict, global_dict=global_dict)
 
     if target_expr is None:
         print "ERROR: TRUSTED EXPRESSION CANNOT BE PARSED!"
@@ -376,8 +442,8 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
                     equal=str(False).lower(),
                     equality_type="symbolic",
                     incorrect_symbols=incorrect_symbols,
-                )
-        # Then check for equality
+                    )
+        # Then check for equality proper:
         equal, equality_type = equality(test_expr, target_expr)
     except (SyntaxError, TypeError, AttributeError, NumericRangeException), e:
         print "Error when comparing expressions: '%s'." % e
@@ -420,17 +486,29 @@ def check_endpoint():
     body = request.get_json(force=True)
 
     if not (("test" in body) and ("target" in body)):
+        print "=" * 50
         print "ERROR: Ill-formed request!"
         print body
+        print "=" * 50
         abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
 
     # Cleanup the strings before anything is done to them:
     target_str = cleanup_string(body["target"])
     test_str = cleanup_string(body["test"])
 
+    if "description" in body:
+        description = str(body["description"])
+    else:
+        description = None
+
     if (target_str == "") or (test_str == ""):
+        print "=" * 50
+        if description is not None:
+            print description
+            print "=" * 50
         print "ERROR: Empty string in request!"
         print "Target: '%s'\nTest: '%s'" % (target_str, test_str)
+        print "=" * 50
         abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
 
     if "symbols" in body:
@@ -442,11 +520,6 @@ def check_endpoint():
         check_symbols = str(body["check_symbols"]).lower() == "true"
     else:
         check_symbols = True
-
-    if "description" in body:
-        description = str(body["description"])
-    else:
-        description = None
 
     response_dict = check(test_str, target_str, symbols, check_symbols, description)
     return jsonify(**response_dict)
