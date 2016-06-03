@@ -30,9 +30,12 @@ app = Flask(__name__)
 
 KNOWN_PAIRS = dict()
 RELATIONS_REGEX = re.compile('(.*?)(=|<=|>=|<|>)(.*)')
-# Hack functions that would give NaN to use complex values by adding 0i (denoted 0j in numpy!) to their input:
+# Numpy (understandably) doesn't have all 24 trig functions defined. Define those missing for completeness. (No hyperbolic inverses for now!)
+# Hack some functions that would give NaN to use complex values by adding 0i (denoted 0j in numpy!) to their input.
 NUMPY_MISSING_FN = {"csc": lambda x: 1/numpy.sin(x+0j), "sec": lambda x: 1/numpy.cos(x+0j), "cot": lambda x: 1/numpy.tan(x+0j),
-                    "acsc": lambda x: numpy.arcsin(numpy.power(x+0j, -1)), "asec": lambda x: numpy.arccos(numpy.power(x+0j, -1)), "acot": lambda x: numpy.arctan(numpy.power(x+0j, -1))}
+                    "acsc": lambda x: numpy.arcsin(numpy.power(x+0j, -1)), "asec": lambda x: numpy.arccos(numpy.power(x+0j, -1)), "acot": lambda x: numpy.arctan(numpy.power(x+0j, -1)),
+                    "asinh": lambda x: numpy.arcsinh(x+0j), "acosh": lambda x: numpy.arccosh(x+0j), "atanh": lambda x: numpy.arctanh(x+0j),
+                    "csch": lambda x: 1/numpy.sinh(x+0j), "sech": lambda x: 1/numpy.cosh(x+0j), "coth": lambda x: 1/numpy.tanh(x+0j)}
 
 
 class NumericRangeException(Exception):
@@ -226,12 +229,12 @@ def numeric_equality(test_expr, target_expr):
 
     # Make the target expression into something numpy can evaluate, then evaluate
     # for the ten points. This *should* now be safe, but still could be dangerous.
-    f_target = sympy.lambdify(shared_variables, target_expr, ["numpy", NUMPY_MISSING_FN])
+    f_target = sympy.lambdify(shared_variables, target_expr, [NUMPY_MISSING_FN, "numpy"])
     eval_f_target = f_target(*domain_target)
 
     # Repeat for the test expression, to get an array of containing SAMPLE_POINTS
     # values of test_expr to be compared to target_expr
-    f_test = sympy.lambdify(test_variables, test_expr, ["numpy", NUMPY_MISSING_FN])
+    f_test = sympy.lambdify(test_variables, test_expr, [NUMPY_MISSING_FN, "numpy"])
     eval_f_test = f_test(*domain_test)
 
     # Output the function values at the sample points for debugging?
@@ -341,6 +344,7 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
                    "arcsinh": sympy.asinh, "arccosh": sympy.acosh, "arctanh": sympy.atanh,
                    "cosec": sympy.csc, "sec": sympy.sec, "cot": sympy.cot,
                    "arccosec": sympy.acsc, "arcsec": sympy.asec, "arccot": sympy.acot,
+                   "cosech": sympy.csch, "sech": sympy.sech, "coth": sympy.coth,
                    "exp": sympy.exp, "log": sympy.log, "ln": sympy.ln,
                    "sqrt": sympy.sqrt, "abs": sympy.Abs, "factorial": factorial,
                    "iI": sympy.I, "piPI": sympy.pi, "eE": sympy.E,
