@@ -178,12 +178,16 @@ def symbolic_equality(test_expr, target_expr):
 #    for x in test_expr.free_symbols:
 #        test_expr = refine(test_expr, Q.positive(x))  # Probably don't want to actually change
 #        test_expr = sympy.expand_log(test_expr, force=True)  # the test expression, but a copy.
-    if sympy.simplify(test_expr - target_expr) == 0:
-        print "Symbolic match."
-        print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
-        KNOWN_PAIRS[(target_expr, test_expr)] = "symbolic"
-        return True
-    else:
+    try:
+        if sympy.simplify(test_expr - target_expr) == 0:
+            print "Symbolic match."
+            print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
+            KNOWN_PAIRS[(target_expr, test_expr)] = "symbolic"
+            return True
+        else:
+            return False
+    except NotImplementedError, e:
+        print "%s: %s - Can't check symbolic equality!" % (type(e).__name__, e.message.capitalize())
         return False
 
 
