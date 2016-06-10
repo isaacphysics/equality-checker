@@ -22,14 +22,14 @@ import sympy.abc
 import sympy
 import numpy
 import re
-#import cPickle
+
 
 __all__ = ["check"]
 app = Flask(__name__)
 
 
 KNOWN_PAIRS = dict()
-RELATIONS_REGEX = re.compile('(.*?)(=|<=|>=|<|>)(.*)')
+RELATIONS_REGEX = '(.*?)(==|<=|>=|<|>)(.*)'
 # Numpy (understandably) doesn't have all 24 trig functions defined. Define those missing for completeness. (No hyperbolic inverses for now!)
 # Hack some functions that would give NaN to use complex values by adding 0i (denoted 0j in numpy!) to their input.
 NUMPY_MISSING_FN = {"csc": lambda x: 1/numpy.sin(x+0j), "sec": lambda x: 1/numpy.cos(x+0j), "cot": lambda x: 1/numpy.tan(x+0j),
@@ -41,6 +41,18 @@ NUMPY_MISSING_FN = {"csc": lambda x: 1/numpy.sin(x+0j), "sec": lambda x: 1/numpy
 class NumericRangeException(Exception):
     """An exception to be raised when numeric values are rejected."""
     pass
+
+
+class EquationTypeMismatch(TypeError):
+    """An exception to be raised when equations are compared to expressions."""
+    pass
+
+
+class Equal(sympy.Equality):
+    """A custom class to override sympy.Equality's str method."""
+    def __str__(self):
+        """Print the equation in a nice way!"""
+        return "%s == %s" % (self.lhs, self.rhs)
 
 
 def cleanup_string(string):
@@ -64,12 +76,32 @@ def known_equal_pair(test_expr, target_expr):
        should reduce calls to 'simplify' and the numeric testing, both of which
        are computationally costly and slow.
     """
+    print "[[KNOWN PAIR CHECK]]"
     pair = (target_expr, test_expr)
     if pair in KNOWN_PAIRS:
         print "Known Pair from %s equality!" % KNOWN_PAIRS[pair]
         return (True, KNOWN_PAIRS[pair])
     else:
         return (False, "known")
+
+
+def parse_relations(match_object):
+    """To ensure that relations like >, >= or == are not evaluated, swap them with Rel class.
+
+       Function to take in a regular expression match from RELATIONS_REGEX and
+       replace the string with an actual Relation class from sympy. This is required
+       to stop sympy from immediately evaluating all inequalities. It's recursive,
+       which should allow nested inequalities - but this functionality may be removed.
+        - 'match_object' should be a regex match object matching RELATIONS_REGEX.
+    """
+    lhs = match_object.group(1).strip()
+    relation = match_object.group(2)
+    rhs = match_object.group(3).strip()
+    if (relation == "=="):
+        # Override the default equality relation to use a custom (human-readable) one.
+        return "Eq(%s,%s)" % (lhs, rhs)
+    else:
+        return "Rel(%s,%s,'%s')" % (lhs, rhs, relation)
 
 
 def parse_expression(expression_str, transforms, local_dict, global_dict):
@@ -88,6 +120,7 @@ def parse_expression(expression_str, transforms, local_dict, global_dict):
           actual functions they will call when evaluated.
     """
     try:
+        expression_str = re.sub(RELATIONS_REGEX, parse_relations, expression_str)  # To ensure not evaluated, swap relations with Rel class
         parsed_expr = sympy_parser.parse_expr(expression_str, transformations=transforms, local_dict=local_dict, global_dict=global_dict, evaluate=False)
         return parsed_expr
     except (sympy.parsing.sympy_tokenize.TokenError, SyntaxError, TypeError, AttributeError, NumericRangeException) as e:
@@ -107,7 +140,7 @@ def contains_incorrect_symbols(test_expr, target_expr):
         - 'test_expr' should be the untrusted sympy expression to check symbols from.
         - 'target_expr' should be the trusted sympy expression to match symbols to.
     """
-    print "[SYMBOL CHECK]"
+    print "[[SYMBOL CHECK]]"
     if test_expr.free_symbols != target_expr.free_symbols:
         print "Symbol mismatch between test and target!"
         result = dict()
@@ -121,9 +154,26 @@ def contains_incorrect_symbols(test_expr, target_expr):
         if len(extra) > 0:
             print "Test Expression has extra: %s" % extra
             result["extra"] = extra
+        print "Not Equal: Enforcing strict symbol match for correctness!"
         return result
     else:
         return None
+
+
+def eq_type_order(eq_types):
+    """Return the worst equality type from a list of equality types.
+
+       Useful for indicating what type of match an equation or relation has: give
+       the worst possible type since this is the weakest link in the equality checking.
+    """
+    if "numeric" in eq_types:
+        return "numeric"
+    elif "symbolic" in eq_types:
+        return "symbolic"
+    elif "exact" in eq_types:
+        return "exact"
+    else:
+        raise TypeError("Unexpected list of equality types: %s" % eq_types)
 
 
 def exact_match(test_expr, target_expr):
@@ -275,17 +325,18 @@ def numeric_equality(test_expr, target_expr):
         return False
 
 
-def equality(test_expr, target_expr):
+def expr_equality(test_expr, target_expr):
     """Given two sympy expressions: test for exact, symbolic and numeric equality.
 
+       Check two sympy expressions for equality, throwing a TypeError if either
+       of the provided sympy objects is not an expression.
         - 'test_expr' should be the untrusted sympy expression to check.
         - 'target_expr' should be the trusted sympy expression to match against.
     """
-    # Test each of the three forms of equality:
-    equal, equality_type = known_equal_pair(test_expr, target_expr)
-    if not equal:
-        equality_type = "exact"
-        equal = exact_match(test_expr, target_expr)
+    if test_expr.is_Relational or target_expr.is_Relational:
+        raise TypeError("Can't check nested equalities/inequalities!")
+    equality_type = "exact"
+    equal = exact_match(test_expr, target_expr)
     if not equal:
         equality_type = "symbolic"
         equal = symbolic_equality(test_expr, target_expr)
@@ -293,6 +344,59 @@ def equality(test_expr, target_expr):
         equality_type = "numeric"
         equal = numeric_equality(test_expr, target_expr)
     return equal, equality_type
+
+
+def general_equality(test_expr, target_expr):
+    """Given two general sympy objects: test for exact, symbolic and numeric equality.
+
+        - 'test_expr' should be the untrusted sympy object to check.
+        - 'target_expr' should be the trusted sympy object to match against.
+    """
+    equal, equality_type = known_equal_pair(test_expr, target_expr)
+    # If this is a known pair: return immediately.
+    if equal:
+        return equal, equality_type
+    # Dealing with an equation?
+    if target_expr.is_Equality:
+        print "[[EQUATION CHECK]]"
+        if not test_expr.is_Equality:
+            raise EquationTypeMismatch("Expected an equation!")
+        print "[LHS == LHS]"
+        equal_lhs, equality_type_lhs = expr_equality(test_expr.lhs, target_expr.lhs)
+        print "[RHS == RHS]"
+        equal_rhs, equality_type_rhs = expr_equality(test_expr.rhs, target_expr.rhs)
+        equal = equal_lhs and equal_rhs
+        equality_type = eq_type_order([equality_type_lhs, equality_type_rhs])
+        if not equal:
+            print "[CROSS SIDE CHECK]"
+            print "[LHS == RHS]"
+            equal_lhs, equality_type_lhs = expr_equality(test_expr.rhs, target_expr.lhs)
+            print "[RHS == LHS]"
+            equal_rhs, equality_type_rhs = expr_equality(test_expr.lhs, target_expr.rhs)
+            equal = equal_lhs and equal_rhs
+            equality_type = eq_type_order([equality_type_lhs, equality_type_rhs])
+        return equal, equality_type
+    # Dealing with an inequality?
+    elif target_expr.is_Relational:
+        print "[[INEQUALITY CHECK]]"
+        if not test_expr.is_Relational:
+            raise EquationTypeMismatch("Expected an inequality!")
+        print "[LTS == LTS]"
+        equal_lts, equality_type_lts = expr_equality(test_expr.lts, target_expr.lts)
+        print "[GTS == GTS]"
+        equal_gts, equality_type_gts = expr_equality(test_expr.gts, target_expr.gts)
+        # Ensure that if one is strict inequlity, they both are. Or if one isn't, the other isn't.
+        equal_rel = not (("Strict" in target_expr.func.__name__) != ("Strict" in test_expr.func.__name__))  # NOT XOR
+        print "[INEQUALITY TYPE CHECK]"
+        if not equal_rel:
+            print "Strict vs Non-Strict Inequality Mismatch!"
+        equal = equal_lts and equal_gts and equal_rel
+        equality_type = eq_type_order([equality_type_lts, equality_type_gts])
+        return equal, equality_type
+    # Else assume an expression:
+    else:
+        print "[[EXPRESSION CHECK]]"
+        return expr_equality(test_expr, target_expr)
 
 
 def factorial(n):
@@ -352,7 +456,7 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
                    "exp": sympy.exp, "log": sympy.log, "ln": sympy.ln,
                    "sqrt": sympy.sqrt, "abs": sympy.Abs, "factorial": factorial,
                    "iI": sympy.I, "piPI": sympy.pi, "eE": sympy.E,
-                   "lamda": sympy.abc.lamda}
+                   "lamda": sympy.abc.lamda, "Rel": sympy.Rel, "Eq": Equal}
 
     # Prevent splitting of known symbols (symbols with underscores are left alone by default anyway)
     local_dict = {}
@@ -362,60 +466,12 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
 
     print "Target string: '%s'" % target_str
     print "Test string: '%s'" % test_str
-    # Are we dealing with equations? If so, do stuff differently!
-    target_groups = RELATIONS_REGEX.match(target_str)  # Group 1 is the LHS, Group 2 the relation
-    test_groups = RELATIONS_REGEX.match(test_str)      # and Group 3 the RHS
-    print "[EQUATION CHECK]"
-    equation = False
-    if (target_groups is not None) and (test_groups is not None):
-        if target_groups.group(1) == test_groups.group(1):  # LHS1 == LHS2
-            print "Equation matching required: compare RHS to RHS."
-            equation = True
-            target_parse_str = target_groups.group(3)
-            test_parse_str = test_groups.group(3)
-        elif target_groups.group(1) == test_groups.group(3):  # LHS1 == RHS2
-            print "Equation matching required: compare RHS to LHS."
-            equation = True
-            target_parse_str = target_groups.group(3)
-            test_parse_str = test_groups.group(1)
-        else:  # No match!
-            print "ERROR: Equations do not match!"
-            print "=" * 50
-            return dict(
-                target=target_str,
-                test=test_str,
-                error="Can't match right now!",
-                )
-    elif (target_groups is None) and (test_groups is None):  # No equation
-        target_parse_str = target_str
-        test_parse_str = test_str
-    else:  # Equation/expression mismatch!
-        print "ERROR: Equation/expression mismatch!"
-        print "=" * 50
-        return dict(
-            target=target_str,
-            test=test_str,
-            error="Expression/Equation mismatch between target and test!",
-            )
-    if equation and (target_groups.group(2) != test_groups.group(2)):
-        print "Equation relation mismatch!\nEquality: False"
-        print "=" * 50
-        return dict(
-            target=target_str,
-            test=test_str,
-            equal=str(False).lower(),
-            equality_type="symbolic",
-            incorrect_relation=dict(
-                    extra=test_groups.group(2),
-                    missing=target_groups.group(2)
-                    )
-            )
 
-    print "[PARSE EXPRESSIONS]"
+    print "[[PARSE EXPRESSIONS]]"
     # Parse the trusted target expression:
-    target_expr = parse_expression(target_parse_str, transforms=transforms, local_dict=local_dict, global_dict=global_dict)
+    target_expr = parse_expression(target_str, transforms=transforms, local_dict=local_dict, global_dict=global_dict)
     # Parse the untrusted test expression:
-    test_expr = parse_expression(test_parse_str, transforms=transforms, local_dict=local_dict, global_dict=global_dict)
+    test_expr = parse_expression(test_str, transforms=transforms, local_dict=local_dict, global_dict=global_dict)
 
     if target_expr is None:
         print "ERROR: TRUSTED EXPRESSION CANNOT BE PARSED!"
@@ -423,7 +479,8 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
         return dict(
             target=target_str,
             test=test_str,
-            error="Parsing Target Expression Failed.",
+            error="Parsing TARGET Expression Failed!",
+            code=400  # Add a Bad Request status code because this is serious
             )
     if test_expr is None:
         print "Incorrectly formatted ToCheck expression."
@@ -440,7 +497,7 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
         if check_symbols:  # Do we have same set of symbols in each?
             incorrect_symbols = contains_incorrect_symbols(test_expr, target_expr)
             if incorrect_symbols is not None:
-                print "Enforcing strict symbol match for correctness!\nEquality: False"
+                print "[[RESULT]]\nEquality: False"
                 print "=" * 50
                 return dict(
                     target=target_str,
@@ -452,7 +509,7 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
                     incorrect_symbols=incorrect_symbols,
                     )
         # Then check for equality proper:
-        equal, equality_type = equality(test_expr, target_expr)
+        equal, equality_type = general_equality(test_expr, target_expr)
     except (SyntaxError, TypeError, AttributeError, NumericRangeException), e:
         print "Error when comparing expressions: '%s'." % e
         print "=" * 50
@@ -463,7 +520,10 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
             parsedTest=str(test_expr),
             error="Comparison of expressions failed: '%s'" % e,
             )
-
+    print "[[RESULT]]"
+    if equal and (equality_type != "exact") and ((target_expr, test_expr) not in KNOWN_PAIRS):
+        print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
+        KNOWN_PAIRS[(target_expr, test_expr)] = equality_type
     print "Equality: %s" % equal
     print "=" * 50
     return dict(
@@ -545,27 +605,6 @@ if __name__ == '__main__':
         app.error_handler_spec[None][code] = make_json_error
     # Then run the app
     app.run(port=5000, host="0.0.0.0", debug=False)
-
-
-
-##### Some test code to add some form of persistence to cached pairs #####
-
-#@app.route('/save', methods=["POST"])
-#def save():
-#    print "INFO: Dumping known pairs to file."
-#    print KNOWN_PAIRS
-#    with open("./KNOWNS.pickle", "a") as f:
-#        cPickle.dump(KNOWN_PAIRS, f)
-#    return "Saved!"
-#
-#
-#@app.route('/load', methods=["POST"])
-#def load():
-#    global KNOWN_PAIRS
-#    print "INFO: Loading known pairs from file."
-#    with open("/equality_checker/KNOWNS.pickle", "a") as f:
-#        KNOWN_PAIRS = cPickle.load(f)
-#    return "Loaded!"
 
 
 ##### Some test code to implement different limits on the sample space #####

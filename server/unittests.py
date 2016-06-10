@@ -84,7 +84,7 @@ class TestEqualityChecker(unittest.TestCase):
         test_str = "x"
         target_str = "y"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols, False)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -269,6 +269,95 @@ class TestEqualityChecker(unittest.TestCase):
         self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "%s"!' % response["equality_type"])
         print "   PASS   ".center(75, "#")
 
+    def test_equations(self):
+        print "\n\n\n" + " Test if Equations Can be Parsed and Checked ".center(75, "#")
+        test_str = "x**2 + x + 1 == 0"
+        target_str = "x + 1 + x**2 == 0"
+        symbols = None
+        response = api.check(test_str, target_str, symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "%s"!' % response["equal"])
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
+        self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "%s"!' % response["equality_type"])
+        print "   PASS   ".center(75, "#")
+
+    def test_inequalities(self):
+        print "\n\n\n" + " Test if Inequalities Can be Parsed and Checked ".center(75, "#")
+        test_str = "x**2 + x + 1 > 0"
+        target_str = "0 < x + 1 + x**2"
+        symbols = None
+        response = api.check(test_str, target_str, symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "%s"!' % response["equal"])
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
+        self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "%s"!' % response["equality_type"])
+        print "   PASS   ".center(75, "#")
+
+    def test_strict_inequalities(self):
+        print "\n\n\n" + " Test if Strict Inequalities Can be Distinguished ".center(75, "#")
+        test_str = "x**2 + x + 1 > 0"
+        target_str = "x + 1 + x**2 >= 0"
+        symbols = None
+        response = api.check(test_str, target_str, symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "false", 'Expected "equal" to be "false", got "%s"!' % response["equal"])
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
+        self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "%s"!' % response["equality_type"])
+        print "   PASS   ".center(75, "#")
+
+    def test_main_trig_functions_numeric(self):
+        print "\n\n\n" + " Test if sin, cos and tan and inverses Work Numerically ".center(75, "#")
+        test_str = "sqrt(x**2) - x + arcsin(y) + arccos(y) + arctan(y) + sin(x) + cos(x) + tan(x)"
+        target_str = "sin(x) + cos(x) + tan(x) + arcsin(y) + arccos(y) + arctan(y)"
+        symbols = None
+        response = api.check(test_str, target_str, symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "%s"!' % response["equal"])
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
+        self.assertTrue(response["equality_type"] == "numeric", 'For these expressions, expected "equality_type" to be "numeric", got "%s"!' % response["equality_type"])
+        print "   PASS   ".center(75, "#")
+
+    def test_main_trig_functions_symbolic(self):
+        print "\n\n\n" + " Test if sin, cos and tan and inverses Work Symbolically ".center(75, "#")
+        test_str = "arcsin(x) + arccos(x) + arctan(x) + sin(x)**2 + cos(x)**2 + tan(x)"
+        target_str = "1 + tan(x) + arcsin(x) + arccos(x) + arctan(x)"
+        symbols = None
+        response = api.check(test_str, target_str, symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "%s"!' % response["equal"])
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
+        self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "%s"!' % response["equality_type"])
+        print "   PASS   ".center(75, "#")
+
+    def test_logarithms(self):
+        print "\n\n\n" + " Test if Logarithms Work ".center(75, "#")
+        test_str = "x*log(x)/log(10) + ln(3) + ln(2)"
+        target_str = "log(x,10)*x + ln(6)"
+        symbols = None
+        response = api.check(test_str, target_str, symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "%s"!' % response["equal"])
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
+        self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "%s"!' % response["equality_type"])
+        print "   PASS   ".center(75, "#")
 
 if __name__ == '__main__':
     unittest.main()
