@@ -31,11 +31,10 @@ app = Flask(__name__)
 KNOWN_PAIRS = dict()
 RELATIONS_REGEX = '(.*?)(==|<=|>=|<|>)(.*)'
 # Numpy (understandably) doesn't have all 24 trig functions defined. Define those missing for completeness. (No hyperbolic inverses for now!)
-# Hack some functions that would give NaN to use complex values by adding 0i (denoted 0j in numpy!) to their input.
-NUMPY_MISSING_FN = {"csc": lambda x: 1/numpy.sin(x+0j), "sec": lambda x: 1/numpy.cos(x+0j), "cot": lambda x: 1/numpy.tan(x+0j),
-                    "acsc": lambda x: numpy.arcsin(numpy.power(x+0j, -1)), "asec": lambda x: numpy.arccos(numpy.power(x+0j, -1)), "acot": lambda x: numpy.arctan(numpy.power(x+0j, -1)),
-                    "asinh": lambda x: numpy.arcsinh(x+0j), "acosh": lambda x: numpy.arccosh(x+0j), "atanh": lambda x: numpy.arctanh(x+0j),
-                    "csch": lambda x: 1/numpy.sinh(x+0j), "sech": lambda x: 1/numpy.cosh(x+0j), "coth": lambda x: 1/numpy.tanh(x+0j)}
+NUMPY_MISSING_FN = {"csc": lambda x: 1/numpy.sin(x), "sec": lambda x: 1/numpy.cos(x), "cot": lambda x: 1/numpy.tan(x),
+                    "acsc": lambda x: numpy.arcsin(numpy.power(x, -1)), "asec": lambda x: numpy.arccos(numpy.power(x, -1)), "acot": lambda x: numpy.arctan(numpy.power(x, -1)),
+                    "asinh": lambda x: numpy.arcsinh(x), "acosh": lambda x: numpy.arccosh(x), "atanh": lambda x: numpy.arctanh(x),
+                    "csch": lambda x: 1/numpy.sinh(x), "sech": lambda x: 1/numpy.cosh(x), "coth": lambda x: 1/numpy.tanh(x)}
 
 
 class NumericRangeException(Exception):
@@ -241,7 +240,7 @@ def symbolic_equality(test_expr, target_expr):
         return False
 
 
-def numeric_equality(test_expr, target_expr):
+def numeric_equality(test_expr, target_expr, complexify=False):
     """Test if two expressions are numerically equivalent to one another.
 
        The implementation of this method is liable to change and currently has
@@ -256,7 +255,7 @@ def numeric_equality(test_expr, target_expr):
         - 'test_expr' should be the untrusted sympy expression to check.
         - 'target_expr' should be the trusted sympy expression to match against.
     """
-    print "[NUMERIC TEST]"
+    print "[NUMERIC TEST]" if not complexify else "[NUMERIC TEST (COMPLEX)]"
     SAMPLE_POINTS = 25
 
     # If target has variables not in test, then test cannot possibly be equal.
@@ -273,6 +272,10 @@ def numeric_equality(test_expr, target_expr):
     domain_target = numpy.random.random_sample((len(target_expr.free_symbols), SAMPLE_POINTS))
     extra_test_freedom = numpy.random.random_sample((len(test_expr.free_symbols) - len(target_expr.free_symbols), SAMPLE_POINTS))
     domain_test = numpy.concatenate((domain_target, extra_test_freedom))
+
+    if complexify:
+        domain_target = domain_target + 0j
+        domain_test = domain_test + 0j
 
     # Make sure that the arguments are given in the same order to lambdify for target and test
     # to ensure that when numbers are blindly passed in, the same number goes to the same
@@ -298,9 +301,15 @@ def numeric_equality(test_expr, target_expr):
     print "Test function value(s):"
     print eval_f_test
 
-    # If we get any NaN's from the functions; we've gone horribly wrong!
+    # If get any NaN's from the functions; things are looking bad:
     if numpy.any(numpy.isnan(eval_f_target)) or numpy.any(numpy.isnan(eval_f_test)):
-        raise NumericRangeException("A function in the test or target expression is undefined in the interval [0,1).")
+        # If have not tried using complex numbers, try using those:
+        if not complexify:
+            print "A function appears to be undefined in the interval [0,1). Trying again with complex values!"
+            return numeric_equality(test_expr, target_expr, complexify=True)
+        else:
+            # If have tried using complex numbers, can't evaluate and have gone badly wrong:
+            raise NumericRangeException("A function in the test or target expression is undefined in the interval [0,1).")
 
     # Do some numeric sanity checking; 64-bit floating points are not perfect.
     numeric_range = numpy.abs(numpy.max(eval_f_target)-numpy.min(eval_f_target))
