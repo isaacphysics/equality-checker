@@ -22,12 +22,14 @@ import sympy.abc
 import sympy
 import numpy
 import re
+import signal
 
 
 __all__ = ["check"]
 app = Flask(__name__)
 
 
+MAX_REQUEST_COMPUTATION_TIME = 5
 KNOWN_PAIRS = dict()
 RELATIONS_REGEX = '(.*?)(==|<=|>=|<|>)(.*)'
 # Numpy (understandably) doesn't have all 24 trig functions defined. Define those missing for completeness. (No hyperbolic inverses for now!)
@@ -45,6 +47,49 @@ class NumericRangeException(Exception):
 class EquationTypeMismatch(TypeError):
     """An exception to be raised when equations are compared to expressions."""
     pass
+
+
+class TimeoutException(Exception):
+    """An exception to be raised if simplification takes too long to finish."""
+    pass
+
+
+class TimeoutProtection:
+    """A custom class to abort long-running code.
+
+       The timeout cannot interrupt libraries running external C code, and so
+       care must be taken. See http://stackoverflow.com/a/22348885 for source.
+       On platforms which do not support SIGALRM (notably Windows), the code will
+       run without timeout protection and merely print a warning to the console.
+        - 'duration' is the number of seconds to allow the code to run for before
+          raising a TimeoutException.
+    """
+    def __init__(self, duration=10):
+        self.duration = duration
+        self.timeout_allowed = True
+        try:
+            signal.SIGALRM
+        except AttributeError:
+            self.timeout_allowed = False
+
+    def handle_timeout(self, signal_number, frame):
+        """The callback function to handle the signal being raised."""
+        raise TimeoutException()
+
+    def __enter__(self):
+        """Allows a 'with' block. If can set an alarm, do so."""
+        if self.timeout_allowed:
+            signal.signal(signal.SIGALRM, self.handle_timeout)
+            signal.alarm(self.duration)
+        else:
+            # We can't use SIGALRM
+            print "WARN: Timeout Unsupported!"
+            pass
+
+    def __exit__(self, type, value, traceback):
+        """Cancels alarm after 'with' block exits."""
+        if self.timeout_allowed:
+            signal.alarm(0)
 
 
 class Equal(sympy.Equality):
@@ -598,8 +643,23 @@ def check_endpoint():
     else:
         check_symbols = True
 
-    response_dict = check(test_str, target_str, symbols, check_symbols, description)
-    return jsonify(**response_dict)
+    # To reduce computation issues on single-threaded server, institute a timeout
+    # for requests. If it takes longer than this to process, return an error.
+    # This cannot interrupt numpy's computation, so care must be taken in selecting
+    # a value for MAX_REQUEST_COMPUTATION_TIME.
+    try:
+        with TimeoutProtection(MAX_REQUEST_COMPUTATION_TIME):
+            response_dict = check(test_str, target_str, symbols, check_symbols, description)
+            return jsonify(**response_dict)
+    except TimeoutException, e:
+        print "ERROR: %s - Request took too long to process, aborting!" % type(e).__name__
+        print "=" * 50
+        error_dict = dict(
+            target=target_str,
+            test=test_str,
+            error="Request took too long to process!",
+            )
+        return jsonify(**error_dict)
 
 
 @app.route('/', methods=["GET"])
