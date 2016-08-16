@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright 2016 James Sharkey
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -105,6 +106,9 @@ def cleanup_string(string):
        Since arbitrary strings are passed in, and 'eval' is used implicitly by
        sympy; try and remove the worst offending things from strings.
     """
+    # Flask gives us unicode objects anyway, the command line might not!
+    if type(string) != unicode:
+        string = unicode(string.decode('utf-8'))  # We'll hope it's UTF-8
     string = re.sub(r'([^0-9])\.([^0-9])', '\g<1> \g<2>', string)  # Allow the . character only surrounded by numbers
     string = string.replace("[", "").replace("]", "")  # This will probably prevent matricies, but good for now
     string = string.replace("'", "").replace('"', '')  # We don't need these characters
@@ -467,7 +471,68 @@ def factorial(n):
         return sympy.factorial(n)
 
 
-def check(test_str, target_str, symbols=None, check_symbols=True, description=None):
+def plus_minus_checker(test_str, target_str, symbols=None, check_symbols=True):
+    """A checking function for inputs containing the ± character.
+
+       Using the same arguments as the check(...) function, deals with multivalued
+       input which contains the ± character. This requires calling check() twice,
+       once for the +ve case and once for the -ve case. Doing so does allow full code
+       reuse, so equations can contain the plus-or-minus notation and still be checked.
+       Returns a simialr dict to check().
+        - 'test_str' should be the untrusted string for sympy to parse.
+        - 'target_str' should be the trusted string to parse and match against.
+        - 'symbols' should be a comma separated list of symbols not to split.
+        - 'check_symbols' indicates whether to verfiy the symbols used in each
+          expression are exactly the same or not; setting this to False will
+          allow symbols which cancel out to be included (probably don't want this
+          in questions).
+    """
+    if u'±' not in test_str:
+        print "ERROR: Test expression did not contain expected ±  part!"
+        return dict(
+            target=target_str,
+            test=test_str,
+            equal=str(False).lower(),
+            equality_type="symbolic",
+            )
+    print "[[Multi-Valued Expression]]\n[Case Using +ve Value]"
+    plus = check(test_str.replace(u'±', '+'), target_str.replace(u'±', '+'),
+                 symbols=symbols, check_symbols=check_symbols, _quiet=True)
+    if "error" in plus:
+        # The dictionary is mostly correct, but the target and test strings are wrong:
+        plus["target"] = target_str
+        plus["test"] = test_str
+        plus["case"] = "+"
+        print "=" * 50
+        return plus
+    print "[[Multi-Valued Expression]]\n[Case Using -ve Value]"
+    minus = check(test_str.replace(u'±', '-'), target_str.replace(u'±', '-'),
+                  symbols=symbols, check_symbols=check_symbols, _quiet=True)
+    if "error" in minus:
+        # The dictionary is mostly correct, but the target and test strings are wrong:
+        minus["target"] = target_str
+        minus["test"] = test_str
+        minus["case"] = "-"
+        print "=" * 50
+        return minus
+    equal = (plus["equal"] == "true" and minus["equal"] == "true")
+    equality_type = eq_type_order([plus["equality_type"], minus["equality_type"]])
+    print "[[OVERALL RESULT]]"
+    print "Equality: %s" % equal
+    print "=" * 50
+    # We'll return only the strictly positive parsed target and test values for now:
+    return dict(
+                target=target_str,
+                test=test_str,
+                parsedTarget=plus["parsedTarget"],
+                parsedTest=plus["parsedTest"],
+                equal=str(equal).lower(),
+                equality_type=equality_type,
+            )
+
+
+def check(test_str, target_str, symbols=None, check_symbols=True, description=None,
+          _quiet=False):
     """The main checking function, calls each of the equality checking functions as required.
 
        Returns a dict describing the equality; with important keys being 'equal',
@@ -483,16 +548,32 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
           in questions).
         - 'description' is an optional description to print before the checker's
           output to stdout which can be used to improve logging.
+        - '_quiet' is an internal argument used to suppress some output when
+          this function is called from plus_minus_checker().
     """
     # If nothing to parse, fail. On server, this will be caught in check_endpoint()
     if (target_str == "") or (test_str == ""):
         return dict(error="Empty string as argument.")
 
-    print "=" * 50
-    # For logging purposes, if we have a description: print it!
-    if description is not None:
-        print description
+    # Cleanup the strings before anything is done to them:
+    target_str = cleanup_string(target_str)
+    test_str = cleanup_string(test_str)
+
+    # Suppress this output:
+    if not _quiet:
         print "=" * 50
+        # For logging purposes, if we have a description: print it!
+        if description is not None:
+            print description
+            print "=" * 50
+
+    print "Target string: '%s'" % target_str
+    print "Test string: '%s'" % test_str
+
+    # If the input contains a plus-or-minus sign, we need to do things differently:
+    if u'±' in target_str:
+        return plus_minus_checker(test_str, target_str, symbols=symbols, check_symbols=check_symbols,
+                                  description=description)
 
     # These two lines address some security issues - don't use default transformations, and whitelist of functions to match.
     # This can't stop some builtin functions, but hopefully removing "." and "[]" will reduce this problem
@@ -518,9 +599,6 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
         for s in symbols.split(","):
             local_dict[s] = sympy.Symbol(s)
 
-    print "Target string: '%s'" % target_str
-    print "Test string: '%s'" % test_str
-
     print "[[PARSE EXPRESSIONS]]"
     # Parse the trusted target expression:
     target_expr = parse_expression(target_str, transforms=transforms, local_dict=local_dict, global_dict=global_dict)
@@ -529,7 +607,8 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
 
     if target_expr is None:
         print "ERROR: TRUSTED EXPRESSION CANNOT BE PARSED!"
-        print "=" * 50
+        if not _quiet:
+            print "=" * 50
         return dict(
             target=target_str,
             test=test_str,
@@ -538,7 +617,8 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
             )
     if test_expr is None:
         print "Incorrectly formatted ToCheck expression."
-        print "=" * 50
+        if not _quiet:
+            print "=" * 50
         return dict(
             target=target_str,
             test=test_str,
@@ -552,7 +632,8 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
             incorrect_symbols = contains_incorrect_symbols(test_expr, target_expr)
             if incorrect_symbols is not None:
                 print "[[RESULT]]\nEquality: False"
-                print "=" * 50
+                if not _quiet:
+                    print "=" * 50
                 return dict(
                     target=target_str,
                     test=test_str,
@@ -566,7 +647,8 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
         equal, equality_type = general_equality(test_expr, target_expr)
     except (SyntaxError, TypeError, AttributeError, NumericRangeException), e:
         print "Error when comparing expressions: '%s'." % e
-        print "=" * 50
+        if not _quiet:
+            print "=" * 50
         return dict(
             target=target_str,
             test=test_str,
@@ -579,7 +661,8 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
         print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
         KNOWN_PAIRS[(target_expr, test_expr)] = equality_type
     print "Equality: %s" % equal
-    print "=" * 50
+    if not _quiet:
+        print "=" * 50
     return dict(
         target=target_str,
         test=test_str,
@@ -614,9 +697,8 @@ def check_endpoint():
         print "=" * 50
         abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
 
-    # Cleanup the strings before anything is done to them:
-    target_str = cleanup_string(body["target"])
-    test_str = cleanup_string(body["test"])
+    target_str = body["target"]
+    test_str = body["test"]
 
     if "description" in body:
         description = str(body["description"])
