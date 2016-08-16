@@ -645,6 +645,10 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
                     )
         # Then check for equality proper:
         equal, equality_type = general_equality(test_expr, target_expr)
+    except EquationTypeMismatch, e:
+        print "Equation/Expression Type Mismatch: can't be equal!"
+        equal = False
+        equality_type = "symbolic"
     except (SyntaxError, TypeError, AttributeError, NumericRangeException), e:
         print "Error when comparing expressions: '%s'." % e
         if not _quiet:
