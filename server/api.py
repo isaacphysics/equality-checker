@@ -487,15 +487,19 @@ def plus_minus_checker(test_str, target_str, symbols=None, check_symbols=True):
           allow symbols which cancel out to be included (probably don't want this
           in questions).
     """
-    if u'±' not in test_str:
-        print "ERROR: Test expression did not contain expected ±  part!"
+    print "[[PLUS-OR-MINUS CHECKING]]"
+    if not ((u'±' in target_str) and (u'±' in test_str)):
+        print "Plus-or-Minus mismatch between test and target! Can't be equal!"
+        print "[[OVERALL RESULT]]"
+        print "Equality: False"
+        print "=" * 50
         return dict(
             target=target_str,
             test=test_str,
             equal=str(False).lower(),
             equality_type="symbolic",
             )
-    print "[[Multi-Valued Expression]]\n[Case Using +ve Value]"
+    print "[[Multi-Valued: Case Using +ve Value]]"
     plus = check(test_str.replace(u'±', '+'), target_str.replace(u'±', '+'),
                  symbols=symbols, check_symbols=check_symbols, _quiet=True)
     if "error" in plus:
@@ -505,7 +509,7 @@ def plus_minus_checker(test_str, target_str, symbols=None, check_symbols=True):
         plus["case"] = "+"
         print "=" * 50
         return plus
-    print "[[Multi-Valued Expression]]\n[Case Using -ve Value]"
+    print "[[Multi-Valued: Case Using -ve Value]]"
     minus = check(test_str.replace(u'±', '-'), target_str.replace(u'±', '-'),
                   symbols=symbols, check_symbols=check_symbols, _quiet=True)
     if "error" in minus:
@@ -571,9 +575,8 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
     print "Test string: '%s'" % test_str
 
     # If the input contains a plus-or-minus sign, we need to do things differently:
-    if u'±' in target_str:
-        return plus_minus_checker(test_str, target_str, symbols=symbols, check_symbols=check_symbols,
-                                  description=description)
+    if ((u'±' in target_str) or (u'±' in test_str)):
+        return plus_minus_checker(test_str, target_str, symbols=symbols, check_symbols=check_symbols)
 
     # These two lines address some security issues - don't use default transformations, and whitelist of functions to match.
     # This can't stop some builtin functions, but hopefully removing "." and "[]" will reduce this problem
