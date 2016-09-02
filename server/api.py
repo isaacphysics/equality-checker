@@ -17,7 +17,6 @@ from flask import Flask, request, jsonify, abort
 from werkzeug.exceptions import default_exceptions
 from werkzeug.exceptions import HTTPException
 from sympy.parsing import sympy_parser
-from sympy.assumptions.refine import refine, Q
 from sympy.core.numbers import Integer, Float, Rational
 import sympy.abc
 import sympy
@@ -98,6 +97,20 @@ class Equal(sympy.Equality):
     def __str__(self):
         """Print the equation in a nice way!"""
         return "%s == %s" % (self.lhs, self.rhs)
+
+
+def factorial(n):
+    """Stop sympy blindly calculating factorials no matter how large.
+
+       If 'n' is a number of some description, ensure that it is smaller than
+       a cutoff, otherwise sympy will simply evaluate it, no matter how long that
+       may take to complete!
+       - 'n' should be a sympy object, that sympy.factorial(...) can use.
+    """
+    if isinstance(n, (Integer, Float, Rational)) and n > 50:
+        raise NumericRangeException("[Factorial]: Too large integer to compute factorial effectively!")
+    else:
+        return sympy.factorial(n)
 
 
 def cleanup_string(string):
@@ -224,6 +237,58 @@ def eq_type_order(eq_types):
         raise TypeError("Unexpected list of equality types: %s" % eq_types)
 
 
+def simplify_derivatives(expr):
+    """Simplify all the derivatives in an expression as far as possible.
+
+       Perform simplification of all derivatives in an expression down to the simplest
+       possible derivatives, unless they are with respect to more than one variable.
+        - 'expr' should be a sympy expression to simplify.
+    """
+    for derivative in expr.atoms(sympy.Derivative):
+        d = simplify_derivative(derivative)
+        expr = expr.subs(derivative, d)
+    return expr
+
+
+def simplify_derivative(derivative):
+    """Simplify a sympy Derivative object.
+
+       Swap any symbols in a sympy Derivative object into Functions, then do the
+       derivative if possible. If the derivative is with respect to more than one
+       variable, no simplification is done and the input is returned unchanged.
+        - 'derivative' should be a sympy.Derivative object or a TypeError will
+          be raised.
+    """
+    if not derivative.is_Derivative:
+        raise TypeError
+    d = derivative
+    # Get the symbols in the top part of the derivative:
+    functions = d.args[0].free_symbols
+    # And the variables in the bottom:
+    variables = set([sym for t in d.args[1:] for sym in t.free_symbols])
+    # Bad things happen if we try simplifying a derivative w.r.t. more than one variable!
+    # We won't try and simplify these at all!
+    if len(variables) > 1:
+        return derivative
+    # Remove the variable from the functions list:
+    functions = functions.difference(variables)
+    # Swap each symbol form of a function to a real function, keeping a way to
+    # reverse this process once we've simplified!
+    reverse = {}
+    for f in functions:
+        F = sympy.Function(str(f))(*variables)
+        reverse[F] = f
+        d = d.subs(f, F)
+    # Do any differentiation simplification possible:
+    d = d.doit()
+    # Undo swapping Symbols to Functions:
+    d = d.subs(reverse)
+    # Then for logging print the simplification:
+    if derivative != d:
+        print "Simplified %s to %s!" % (derivative, d)
+    return d
+
+
 def exact_match(test_expr, target_expr):
     """Test if the entered expression exactly matches the known expression.
 
@@ -271,13 +336,12 @@ def symbolic_equality(test_expr, target_expr):
         - 'target_expr' should be the trusted sympy expression to match against.
     """
     print "[SYMBOLIC TEST]"
-#    # This would allow assumptions to be made, say to simplify sqrt(x**2) iff x e R and x > 0
-#    # Or to expand logarithms and apply the laws of logs (forcing avoids complex number issues)
-#    for x in test_expr.free_symbols:
-#        test_expr = refine(test_expr, Q.positive(x))  # Probably don't want to actually change
-#        test_expr = sympy.expand_log(test_expr, force=True)  # the test expression, but a copy.
+    # Here we make the assumption that all variables are real and positive to
+    # aid the simplification process. Since we do this for numeric checking anyway,
+    # it doesn't seem like much of an issue. Removing 'sympy.posify()' below will
+    # stop this.
     try:
-        if sympy.simplify(test_expr - target_expr) == 0:
+        if sympy.simplify(sympy.posify(test_expr - target_expr)[0]) == 0:
             print "Symbolic match."
             print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
             KNOWN_PAIRS[(target_expr, test_expr)] = "symbolic"
@@ -303,14 +367,29 @@ def numeric_equality(test_expr, target_expr, complexify=False):
 
         - 'test_expr' should be the untrusted sympy expression to check.
         - 'target_expr' should be the trusted sympy expression to match against.
+        - 'complexify' is a boolean flag for sampling in the complex plane rather
+          than just over the reals.
     """
     print "[NUMERIC TEST]" if not complexify else "[NUMERIC TEST (COMPLEX)]"
     SAMPLE_POINTS = 25
 
+    # Leave original expressions unchanged!
+    target_expr_n = target_expr
+    test_expr_n = test_expr
+
+    # Replace any derivatives that exist with new dummy symbols, and treat them
+    # as independent from the variables they involve. To avoid naming clashes,
+    # just name them in ascending numeric order.
+    for d, derivative in enumerate(target_expr.atoms(sympy.Derivative).union(test_expr.atoms(sympy.Derivative))):
+        derivative_symbol = sympy.Symbol("Derivative_%s" % d)
+        print "Swapping '%s' into variable '%s' for numeric evaluation!" % (derivative, derivative_symbol)
+        target_expr_n = target_expr_n.subs(derivative, derivative_symbol)
+        test_expr_n = test_expr_n.subs(derivative, derivative_symbol)
+
     # If target has variables not in test, then test cannot possibly be equal.
     # This introduces an asymmetry; target is trusted to only contain necessary symbols,
     # but test is not.
-    if len(target_expr.free_symbols.difference(test_expr.free_symbols)) > 0:
+    if len(target_expr_n.free_symbols.difference(test_expr_n.free_symbols)) > 0:
         print "Test expression doesn't contain all target expression variables! Can't be numerically tested."
         return False
 
@@ -318,10 +397,12 @@ def numeric_equality(test_expr, target_expr, complexify=False):
     # i.e. if target is f(x) but test is g(x, y) then we need to sample over y too
     # in case it has no effect on the result [say g(x,y) = (y/y) * f(x) , which is
     # mathematically identical to f(x) but may have been missed by the symbolic part.]
-    domain_target = numpy.random.random_sample((len(target_expr.free_symbols), SAMPLE_POINTS))
-    extra_test_freedom = numpy.random.random_sample((len(test_expr.free_symbols) - len(target_expr.free_symbols), SAMPLE_POINTS))
+    domain_target = numpy.random.random_sample((len(target_expr_n.free_symbols), SAMPLE_POINTS))
+    extra_test_freedom = numpy.random.random_sample((len(test_expr_n.free_symbols) - len(target_expr_n.free_symbols), SAMPLE_POINTS))
     domain_test = numpy.concatenate((domain_target, extra_test_freedom))
 
+    # If we're trying the samples in the complex plane, make these arrays complex
+    # in the simplest way possible: adding 0 of the imaginary unit.
     if complexify:
         domain_target = domain_target + 0j
         domain_test = domain_test + 0j
@@ -329,18 +410,18 @@ def numeric_equality(test_expr, target_expr, complexify=False):
     # Make sure that the arguments are given in the same order to lambdify for target and test
     # to ensure that when numbers are blindly passed in, the same number goes to the same
     # symbol when evaluated for both test and target.
-    shared_variables = list(target_expr.free_symbols)  # We ensured above that all symbols in target are in test also
-    extra_test_variables = list(test_expr.free_symbols.difference(target_expr.free_symbols))
+    shared_variables = list(target_expr_n.free_symbols)  # We ensured above that all symbols in target are in test also
+    extra_test_variables = list(test_expr_n.free_symbols.difference(target_expr_n.free_symbols))
     test_variables = shared_variables + extra_test_variables
 
     # Make the target expression into something numpy can evaluate, then evaluate
     # for the ten points. This *should* now be safe, but still could be dangerous.
-    f_target = sympy.lambdify(shared_variables, target_expr, [NUMPY_MISSING_FN, "numpy"])
+    f_target = sympy.lambdify(shared_variables, target_expr_n, [NUMPY_MISSING_FN, "numpy"])
     eval_f_target = f_target(*domain_target)
 
     # Repeat for the test expression, to get an array of containing SAMPLE_POINTS
-    # values of test_expr to be compared to target_expr
-    f_test = sympy.lambdify(test_variables, test_expr, [NUMPY_MISSING_FN, "numpy"])
+    # values of test_expr_n to be compared to target_expr_n
+    f_test = sympy.lambdify(test_variables, test_expr_n, [NUMPY_MISSING_FN, "numpy"])
     eval_f_test = f_test(*domain_test)
 
     # Output the function values at the sample points for debugging?
@@ -396,6 +477,12 @@ def expr_equality(test_expr, target_expr):
     equality_type = "exact"
     equal = exact_match(test_expr, target_expr)
     if not equal:
+        # Now is the best time to simplify any derivatives:
+        if target_expr.has(sympy.Derivative) or test_expr.has(sympy.Derivative):
+            print "[SIMPLIFY DERIVATIVES]"
+            target_expr = simplify_derivatives(target_expr)
+            test_expr = simplify_derivatives(test_expr)
+        # Then try checking for symbolic equality:
         equality_type = "symbolic"
         equal = symbolic_equality(test_expr, target_expr)
     if not equal:
@@ -411,7 +498,7 @@ def general_equality(test_expr, target_expr):
         - 'target_expr' should be the trusted sympy object to match against.
     """
     equal, equality_type = known_equal_pair(test_expr, target_expr)
-    # If this is a known pair: return immediately.
+    # If this is a known pair: return immediately:
     if equal:
         return equal, equality_type
     # Dealing with an equation?
@@ -455,20 +542,6 @@ def general_equality(test_expr, target_expr):
     else:
         print "[[EXPRESSION CHECK]]"
         return expr_equality(test_expr, target_expr)
-
-
-def factorial(n):
-    """Stop sympy blindly calculating factorials no matter how large.
-
-       If 'n' is a number of some description, ensure that it is smaller than
-       a cutoff, otherwise sympy will simply evaluate it, no matter how long that
-       may take to complete!
-       - 'n' should be a sympy object, that sympy.factorial(...) can use.
-    """
-    if isinstance(n, (Integer, Float, Rational)) and n > 50:
-        raise NumericRangeException("[Factorial]: Too large integer to compute factorial effectively!")
-    else:
-        return sympy.factorial(n)
 
 
 def plus_minus_checker(test_str, target_str, symbols=None, check_symbols=True):
@@ -594,7 +667,8 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
                    "exp": sympy.exp, "log": sympy.log, "ln": sympy.ln,
                    "sqrt": sympy.sqrt, "abs": sympy.Abs, "factorial": factorial,
                    "iI": sympy.I, "piPI": sympy.pi, "eE": sympy.E,
-                   "lamda": sympy.abc.lamda, "Rel": sympy.Rel, "Eq": Equal}
+                   "lamda": sympy.abc.lamda, "Rel": sympy.Rel, "Eq": Equal,
+                   "Derivative": sympy.Derivative}
 
     # Prevent splitting of known symbols (symbols with underscores are left alone by default anyway)
     local_dict = {}

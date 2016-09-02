@@ -222,7 +222,7 @@ class TestEqualityChecker(unittest.TestCase):
         self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "%s"!' % response["equal"])
         self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
         self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
-        self.assertTrue(response["equality_type"] == "numeric", 'For these expressions, expected "equality_type" to be "numeric", got "%s"!' % response["equality_type"])
+        self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "%s"!' % response["equality_type"])
         print "   PASS   ".center(75, "#")
 
     def test_disallowed_extra_variables(self):
@@ -252,7 +252,7 @@ class TestEqualityChecker(unittest.TestCase):
         self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "%s"!' % response["equal"])
         self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
         self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
-        self.assertTrue(response["equality_type"] == "numeric", 'For these expressions, expected "equality_type" to be "numeric", got "%s"!' % response["equality_type"])
+        self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "%s"!' % response["equality_type"])
         print "   PASS   ".center(75, "#")
 
     def test_large_bracket_expression(self):
