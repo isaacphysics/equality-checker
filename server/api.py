@@ -290,7 +290,7 @@ def simplify_derivative(derivative):
     d = d.subs(reverse)
     # Then for logging print the simplification:
     if derivative != d:
-        print "Simplified %s to %s!" % (derivative, d)
+        print "Simplified '%s' to '%s'!" % (derivative, d)
     return d
 
 
@@ -551,6 +551,8 @@ def general_equality(test_expr, target_expr):
     # Else assume an expression:
     else:
         print "[[EXPRESSION CHECK]]"
+        if test_expr.is_Equality or test_expr.is_Relational:
+            raise EquationTypeMismatch("Expected an expression!")
         return expr_equality(test_expr, target_expr)
 
 
@@ -561,7 +563,7 @@ def plus_minus_checker(test_str, target_str, symbols=None, check_symbols=True):
        input which contains the ± character. This requires calling check() twice,
        once for the +ve case and once for the -ve case. Doing so does allow full code
        reuse, so equations can contain the plus-or-minus notation and still be checked.
-       Returns a simialr dict to check().
+       Returns a similar dict to check().
         - 'test_str' should be the untrusted string for sympy to parse.
         - 'target_str' should be the trusted string to parse and match against.
         - 'symbols' should be a comma separated list of symbols not to split.
@@ -844,6 +846,6 @@ if __name__ == '__main__':
     # Make sure all outgoing error messages are in JSON format.
     # This will only work provided debug=False - otherwise the debugger hijacks them!
     for code in default_exceptions.iterkeys():
-        app.error_handler_spec[None][code] = make_json_error
+        app.register_error_handler(code, make_json_error)
     # Then run the app
     app.run(port=5000, host="0.0.0.0", debug=False)
