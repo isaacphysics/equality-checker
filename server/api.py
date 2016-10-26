@@ -37,6 +37,11 @@ NUMPY_MISSING_FN = {"csc": lambda x: 1/numpy.sin(x), "sec": lambda x: 1/numpy.co
                     "acsc": lambda x: numpy.arcsin(numpy.power(x, -1)), "asec": lambda x: numpy.arccos(numpy.power(x, -1)), "acot": lambda x: numpy.arctan(numpy.power(x, -1)),
                     "asinh": lambda x: numpy.arcsinh(x), "acosh": lambda x: numpy.arccosh(x), "atanh": lambda x: numpy.arctanh(x),
                     "csch": lambda x: 1/numpy.sinh(x), "sech": lambda x: 1/numpy.cosh(x), "coth": lambda x: 1/numpy.tanh(x)}
+# Make a complex form of the above for no-variable cases of numeric evaluation.
+# (Late Binding means that can't just use NUMPY_MISSING_FN[k] since this isn't evaluated in
+# the for loop properly. But adding it as a default argument to the lambda *does* cause the
+# evaluation and so the two effects cancel out. Neat!)
+NUMPY_COMPLEX_FN = {k: lambda x, f=NUMPY_MISSING_FN[k]: f(x + 0j) for k in NUMPY_MISSING_FN.keys()}
 
 
 class NumericRangeException(Exception):
@@ -372,6 +377,7 @@ def numeric_equality(test_expr, target_expr, complexify=False):
     """
     print "[NUMERIC TEST]" if not complexify else "[NUMERIC TEST (COMPLEX)]"
     SAMPLE_POINTS = 25
+    lambdify_modules = [NUMPY_MISSING_FN, "numpy"]
 
     # Leave original expressions unchanged!
     target_expr_n = target_expr
@@ -403,9 +409,12 @@ def numeric_equality(test_expr, target_expr, complexify=False):
 
     # If we're trying the samples in the complex plane, make these arrays complex
     # in the simplest way possible: adding 0 of the imaginary unit.
+    # Also use the complex versions of the missing numpy functions (for cases
+    # where there are no variables, only constants, this is essential!)
     if complexify:
         domain_target = domain_target + 0j
         domain_test = domain_test + 0j
+        lambdify_modules = [NUMPY_COMPLEX_FN, "numpy"]
 
     # Make sure that the arguments are given in the same order to lambdify for target and test
     # to ensure that when numbers are blindly passed in, the same number goes to the same
@@ -416,12 +425,12 @@ def numeric_equality(test_expr, target_expr, complexify=False):
 
     # Make the target expression into something numpy can evaluate, then evaluate
     # for the ten points. This *should* now be safe, but still could be dangerous.
-    f_target = sympy.lambdify(shared_variables, target_expr_n, [NUMPY_MISSING_FN, "numpy"])
+    f_target = sympy.lambdify(shared_variables, target_expr_n, lambdify_modules)
     eval_f_target = f_target(*domain_target)
 
     # Repeat for the test expression, to get an array of containing SAMPLE_POINTS
     # values of test_expr_n to be compared to target_expr_n
-    f_test = sympy.lambdify(test_variables, test_expr_n, [NUMPY_MISSING_FN, "numpy"])
+    f_test = sympy.lambdify(test_variables, test_expr_n, lambdify_modules)
     eval_f_test = f_test(*domain_test)
 
     # Output the function values at the sample points for debugging?
