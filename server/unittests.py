@@ -315,21 +315,6 @@ class TestEqualityChecker(unittest.TestCase):
         self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "%s"!' % response["equality_type"])
         print "   PASS   ".center(75, "#")
 
-    def test_main_trig_functions_numeric(self):
-        print "\n\n\n" + " Test if sin, cos and tan and inverses Work Numerically ".center(75, "#")
-        test_str = "sqrt(x**2) - x + arcsin(y) + arccos(y) + arctan(y) + sin(x) + cos(x) + tan(x)"
-        target_str = "sin(x) + cos(x) + tan(x) + arcsin(y) + arccos(y) + arctan(y)"
-        symbols = None
-        response = api.check(test_str, target_str, symbols)
-
-        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
-        self.assertTrue("equal" in response, 'Key "equal" not in response!')
-        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "%s"!' % response["equal"])
-        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
-        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
-        self.assertTrue(response["equality_type"] == "numeric", 'For these expressions, expected "equality_type" to be "numeric", got "%s"!' % response["equality_type"])
-        print "   PASS   ".center(75, "#")
-
     def test_main_trig_functions_symbolic(self):
         print "\n\n\n" + " Test if sin, cos and tan and inverses Work Symbolically ".center(75, "#")
         test_str = "arcsin(x) + arccos(x) + arctan(x) + sin(x)**2 + cos(x)**2 + tan(x)"
@@ -373,6 +358,70 @@ class TestEqualityChecker(unittest.TestCase):
         self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
         self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
         self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "%s"!' % response["equality_type"])
+        print "   PASS   ".center(75, "#")
+
+    def test_derivatives(self):
+        print "\n\n\n" + " Test if Derivatives Work ".center(75, "#")
+        test_str = "2 * y * Derivative(y, x)"
+        target_str = "Derivative(y**2, x)"
+        symbols = None
+        response = api.check(test_str, target_str, symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "%s"!' % response["equal"])
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
+        self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "%s"!' % response["equality_type"])
+        print "   PASS   ".center(75, "#")
+
+    def test_differential_equations(self):
+        print "\n\n\n" + " Test Differential Equations ".center(75, "#")
+        test_str = "Derivative(Derivative(y, x), x) == y*cos(x) + sin(x)*Derivative(y, x)"
+        target_str = "Derivative(y, x, x) == Derivative(sin(x) * y, x)"
+        symbols = None
+        response = api.check(test_str, target_str, symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "%s"!' % response["equal"])
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
+        self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "%s"!' % response["equality_type"])
+        print "   PASS   ".center(75, "#")
+
+
+#####
+# These tests are for specific parts of the main checking code and may more easily
+# be broken by later modifications.
+#####
+
+    def test_main_trig_functions_numeric(self):
+        print "\n\n\n" + " Test if sin, cos and tan and inverses Work Numerically ".center(75, "#")
+        from sympy import symbols, sin, cos, tan, asin, acos, atan
+        x, y = symbols('x,y')
+        test_expr = sin(x) + cos(x) + tan(x) + asin(y) + acos(y) + atan(y)
+        target_expr = sin(x) + cos(x) + tan(x) + asin(y) + acos(y) + atan(y)
+
+        print "Target expression: '%s'" % target_expr
+        print "Test expression: '%s'" % test_expr
+        equal = api.numeric_equality(test_expr, target_expr)
+
+        self.assertTrue(equal, "Expected expressions to be found numerically equal!")
+        print "   PASS   ".center(75, "#")
+
+    def test_derivatives_numeric(self):
+        print "\n\n\n" + " Test if Derivatives Work Numerically ".center(75, "#")
+        from sympy import symbols, Derivative
+        x, y, z = symbols('x,y,z')
+        test_expr = Derivative(y, x) + Derivative(z, x)
+        target_expr = Derivative(z, x) + Derivative(y, x)
+
+        print "Target expression: '%s'" % target_expr
+        print "Test expression: '%s'" % test_expr
+        equal = api.numeric_equality(test_expr, target_expr)
+
+        self.assertTrue(equal, "Expected expressions to be found numerically equal!")
         print "   PASS   ".center(75, "#")
 
 
