@@ -837,19 +837,3 @@ if __name__ == '__main__':
         app.error_handler_spec[None][code] = make_json_error
     # Then run the app
     app.run(port=5000, host="0.0.0.0", debug=False)
-
-
-##### Some test code to implement different limits on the sample space #####
-
-#test = numpy.random.random_sample((4, 10))#numpy.ones((4, 10))
-#lims = {"gamma": (0, 0), "b": (0, 0), "c": (0, 1), "d": (0, 0)}
-#up_limits = numpy.array([lims[e][1] for e in sorted(lims.keys())])
-#low_limits = numpy.array([lims[e][0] for e in sorted(lims.keys())])
-#vals = numpy.dot(numpy.diag(up_limits - low_limits), test)
-#print vals
-#vals += numpy.dot(numpy.diag(low_limits), numpy.ones((4, 10)))
-#tttt = sympy_parser.parse_expr("2*lamda+4*c+5*d+3*b", sympy.abc._clash)
-#print sorted(tttt.free_symbols, key=lambda x: str(x))
-#ffff = sympy.lambdify(sorted(tttt.free_symbols, key=lambda x: str(x)), tttt, "numpy")
-#gggg = ffff(*vals)
-#print gggg
