@@ -1,5 +1,7 @@
 FROM python:2.7
 
+ENV PYTHONIOENCODING UTF-8
+
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
