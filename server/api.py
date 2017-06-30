@@ -619,7 +619,7 @@ GLOBAL_DICT = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy.
                "arccosec": sympy.acsc, "arcsec": sympy.asec, "arccot": sympy.acot,
                "cosech": sympy.csch, "sech": sympy.sech, "coth": sympy.coth,
                "exp": sympy.exp, "log": sympy.log, "ln": sympy.ln,
-               "sqrt": sympy.sqrt, "abs": sympy.Abs, "factorial": factorial,
+               "sqrt": sympy.sqrt, "abs": sympy.Abs,  # "factorial": factorial,
                "iI": sympy.I, "piPI": sympy.pi, "eE": sympy.E,
                "lamda": sympy.abc.lamda, "Rel": sympy.Rel, "Eq": Equal,
                "Derivative": sympy.Derivative}

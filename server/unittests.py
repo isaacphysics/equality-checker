@@ -199,16 +199,16 @@ class TestEqualityChecker(unittest.TestCase):
         self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "%s"!' % response["equality_type"])
         print "   PASS   ".center(75, "#")
 
-    def test_factorials_limited(self):
-        print "\n\n\n" + " Test Factorials are correctly Limited ".center(75, "#")
-        test_str = "factorial(1000)"
-        target_str = "1"
-        symbols = None
-        response = api.check(test_str, target_str, symbols)
-
-        self.assertTrue("error" in response, 'Unexpected lack of "error" in response!')
-        self.assertTrue(response["error"] == "Parsing Test Expression Failed.", "Error message not as expected '%s'." % response["error"])
-        print "   PASS   ".center(75, "#")
+#    def test_factorials_limited(self):
+#        print "\n\n\n" + " Test Factorials are correctly Limited ".center(75, "#")
+#        test_str = "factorial(1000)"
+#        target_str = "1"
+#        symbols = None
+#        response = api.check(test_str, target_str, symbols)
+#
+#        self.assertTrue("error" in response, 'Unexpected lack of "error" in response!')
+#        self.assertTrue(response["error"] == "Parsing Test Expression Failed.", "Error message not as expected '%s'." % response["error"])
+#        print "   PASS   ".center(75, "#")
 
     def test_extra_test_variables(self):
         print "\n\n\n" + " Test N+1 Variable Test Expression ".center(75, "#")
