@@ -242,19 +242,6 @@ def eq_type_order(eq_types):
         raise TypeError("Unexpected list of equality types: %s" % eq_types)
 
 
-def simplify_derivatives(expr):
-    """Simplify all the derivatives in an expression as far as possible.
-
-       Perform simplification of all derivatives in an expression down to the simplest
-       possible derivatives, unless they are with respect to more than one variable.
-        - 'expr' should be a sympy expression to simplify.
-    """
-    for derivative in expr.atoms(sympy.Derivative):
-        d = simplify_derivative(derivative)
-        expr = expr.subs(derivative, d)
-    return expr
-
-
 def simplify_derivative(derivative):
     """Simplify a sympy Derivative object.
 
@@ -292,6 +279,19 @@ def simplify_derivative(derivative):
     if derivative != d:
         print "Simplified '%s' to '%s'!" % (derivative, d)
     return d
+
+
+def simplify_derivatives(expr):
+    """Simplify all the derivatives in an expression as far as possible.
+
+       Perform simplification of all derivatives in an expression down to the simplest
+       possible derivatives, unless they are with respect to more than one variable.
+        - 'expr' should be a sympy expression to simplify.
+    """
+    for derivative in expr.atoms(sympy.Derivative):
+        d = simplify_derivative(derivative)
+        expr = expr.subs(derivative, d)
+    return expr
 
 
 def exact_match(test_expr, target_expr):
@@ -620,6 +620,26 @@ def plus_minus_checker(test_str, target_str, symbols=None, check_symbols=True):
             )
 
 
+# These two lines address some security issues - don't use default transformations, and whitelist of functions to match.
+# This can't stop some builtin functions, but hopefully removing "." and "[]" will reduce this problem
+TRANSFORMS = (sympy.parsing.sympy_parser.auto_number, sympy.parsing.sympy_parser.auto_symbol,
+              sympy.parsing.sympy_parser.convert_xor, sympy_parser.split_symbols, sympy_parser.implicit_multiplication)
+GLOBAL_DICT = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy.Float, "Rational": sympy.Rational,
+               "Mul": sympy.Mul, "Pow": sympy.Pow, "Add": sympy.Add,
+               "sin": sympy.sin, "cos": sympy.cos, "tan": sympy.tan,
+               "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
+               "sinh": sympy.sinh, "cosh": sympy.cosh, "tanh": sympy.tanh,
+               "arcsinh": sympy.asinh, "arccosh": sympy.acosh, "arctanh": sympy.atanh,
+               "cosec": sympy.csc, "sec": sympy.sec, "cot": sympy.cot,
+               "arccosec": sympy.acsc, "arcsec": sympy.asec, "arccot": sympy.acot,
+               "cosech": sympy.csch, "sech": sympy.sech, "coth": sympy.coth,
+               "exp": sympy.exp, "log": sympy.log, "ln": sympy.ln,
+               "sqrt": sympy.sqrt, "abs": sympy.Abs, "factorial": factorial,
+               "iI": sympy.I, "piPI": sympy.pi, "eE": sympy.E,
+               "lamda": sympy.abc.lamda, "Rel": sympy.Rel, "Eq": Equal,
+               "Derivative": sympy.Derivative}
+
+
 def check(test_str, target_str, symbols=None, check_symbols=True, description=None,
           _quiet=False):
     """The main checking function, calls each of the equality checking functions as required.
@@ -662,25 +682,6 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
     # If the input contains a plus-or-minus sign, we need to do things differently:
     if ((u'±' in target_str) or (u'±' in test_str)):
         return plus_minus_checker(test_str, target_str, symbols=symbols, check_symbols=check_symbols)
-
-    # These two lines address some security issues - don't use default transformations, and whitelist of functions to match.
-    # This can't stop some builtin functions, but hopefully removing "." and "[]" will reduce this problem
-    transforms = (sympy.parsing.sympy_parser.auto_number, sympy.parsing.sympy_parser.auto_symbol,
-                  sympy.parsing.sympy_parser.convert_xor, sympy_parser.split_symbols, sympy_parser.implicit_multiplication)
-    global_dict = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy.Float, "Rational": sympy.Rational,
-                   "Mul": sympy.Mul, "Pow": sympy.Pow, "Add": sympy.Add,
-                   "sin": sympy.sin, "cos": sympy.cos, "tan": sympy.tan,
-                   "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
-                   "sinh": sympy.sinh, "cosh": sympy.cosh, "tanh": sympy.tanh,
-                   "arcsinh": sympy.asinh, "arccosh": sympy.acosh, "arctanh": sympy.atanh,
-                   "cosec": sympy.csc, "sec": sympy.sec, "cot": sympy.cot,
-                   "arccosec": sympy.acsc, "arcsec": sympy.asec, "arccot": sympy.acot,
-                   "cosech": sympy.csch, "sech": sympy.sech, "coth": sympy.coth,
-                   "exp": sympy.exp, "log": sympy.log, "ln": sympy.ln,
-                   "sqrt": sympy.sqrt, "abs": sympy.Abs, "factorial": factorial,
-                   "iI": sympy.I, "piPI": sympy.pi, "eE": sympy.E,
-                   "lamda": sympy.abc.lamda, "Rel": sympy.Rel, "Eq": Equal,
-                   "Derivative": sympy.Derivative}
 
     # Prevent splitting of known symbols (symbols with underscores are left alone by default anyway)
     local_dict = {}
