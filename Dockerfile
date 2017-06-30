@@ -1,6 +1,10 @@
 FROM python:2.7
 
+# To allow the Unicode +- sign to be printed, set IO encoding:
 ENV PYTHONIOENCODING UTF-8
+
+# To ensure output printed correctly, alter buffering:
+ENV PYTHONUNBUFFERED 0
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
