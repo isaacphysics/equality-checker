@@ -1,5 +1,5 @@
 # equality-checker
-A not-quite-so-tiny-any-more server for testing the equivalence of two algebraic expressions.
+A not-quite-so-tiny-any-more server for testing the equivalence of two algebraic expressions using [SymPy](http://www.sympy.org/en/index.html).
 
 ### Development Setup Instructions
 #### Simple Setup
@@ -8,8 +8,8 @@ A not-quite-so-tiny-any-more server for testing the equivalence of two algebraic
 3. Run `pip install -r requirements.txt`
 4. Run `python server\api.py`
 
-Your server should be running on `http://localhost:5000/check`.
-Now make JSON-based POST requests with target and test expressions, e.g.
+Your server should be running at `http://localhost:5000/check`.
+Now make JSON-based POST requests with target and test expression strings, e.g.
 ```
 {
     "target": "x + 3",
@@ -29,7 +29,7 @@ which will get a response like:
     "test": "3 + x"
 }
 ```
-or if something went wrong an error like:
+or, if something went wrong, an error like:
 ```
 {
     "error": "Some error message here",
@@ -42,8 +42,8 @@ To develop the Docker container as well:
 
 5. Install [Docker](https://www.docker.com/)
 7. Run `docker build -t ucamcldtg/equality-checker .`
-8. Test using `docker run -p 5000:5000 -it ucamcldtg/equality-checker` rather than running locally
-9. Optionally deploy to dockerhub: `docker push ucamcldtg/equality-checker`
+8. Test using `docker run -p 5000:5000 -it ucamcldtg/equality-checker` rather than running Python locally
+9. Optionally deploy to dockerhub: `docker push ucamcldtg/equality-checker` (requires authentication)
 
 ### Production Use
 
