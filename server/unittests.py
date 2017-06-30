@@ -390,6 +390,36 @@ class TestEqualityChecker(unittest.TestCase):
         self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "%s"!' % response["equality_type"])
         print "   PASS   ".center(75, "#")
 
+    def test_log_matching_not_exact(self):
+        print "\n\n\n" + " Test log(x)/log(10) not Exact Match of log(x, 10) ".center(75, "#")
+        test_str = "log(x) / log(10)"
+        target_str = "log(x, 10)"
+        symbols = None
+        response = api.check(test_str, target_str, symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "%s"!' % response["equal"])
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
+        self.assertTrue(response["equality_type"] != "exact", 'For these expressions, expected "equality_type" not to be "exact", got "%s"!' % response["equality_type"])
+        print "   PASS   ".center(75, "#")
+
+    def test_cos_minus_x_not_exact(self):
+        print "\n\n\n" + " Test cos(-x) not Exact Match of cos(x) ".center(75, "#")
+        test_str = "cos(x)"
+        target_str = "cos(-x)"
+        symbols = None
+        response = api.check(test_str, target_str, symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "%s"!' % response["equal"])
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
+        self.assertTrue(response["equality_type"] != "exact", 'For these expressions, expected "equality_type" not to be "exact", got "%s"!' % response["equality_type"])
+        print "   PASS   ".center(75, "#")
+
 
 #####
 # These tests are for specific parts of the main checking code and may more easily
@@ -424,6 +454,20 @@ class TestEqualityChecker(unittest.TestCase):
         self.assertTrue(equal, "Expected expressions to be found numerically equal!")
         print "   PASS   ".center(75, "#")
 
+    def test_extra_test_variables_numeric(self):
+        print "\n\n\n" + " Test N+1 Variable Numeric Checking ".center(75, "#")
+        from sympy import symbols, exp, sin, cos, sqrt, Integer
+        x = symbols('x')
+        test_expr = sin(exp(sqrt(2*x)))**2 + cos(exp(sqrt(x))**sqrt(2))**2
+        target_expr = Integer("1")
+        symbols = None
+
+        print "Target expression: '%s'" % target_expr
+        print "Test expression: '%s'" % test_expr
+        equal = api.numeric_equality(test_expr, target_expr)
+
+        self.assertTrue(equal, "Expected expressions to be found numerically equal!")
+        print "   PASS   ".center(75, "#")
 
 if __name__ == '__main__':
     unittest.main()

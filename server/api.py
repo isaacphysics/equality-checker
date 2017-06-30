@@ -23,6 +23,7 @@ import sympy
 import numpy
 import re
 import signal
+import parsing
 
 
 __all__ = ["check"]
@@ -31,7 +32,6 @@ app = Flask(__name__)
 
 MAX_REQUEST_COMPUTATION_TIME = 5
 KNOWN_PAIRS = dict()
-RELATIONS_REGEX = '(.*?)(==|<=|>=|<|>)(.*)'
 # Numpy (understandably) doesn't have all 24 trig functions defined. Define those missing for completeness. (No hyperbolic inverses for now!)
 NUMPY_MISSING_FN = {"csc": lambda x: 1/numpy.sin(x), "sec": lambda x: 1/numpy.cos(x), "cot": lambda x: 1/numpy.tan(x),
                     "acsc": lambda x: numpy.arcsin(numpy.power(x, -1)), "asec": lambda x: numpy.arccos(numpy.power(x, -1)), "acot": lambda x: numpy.arctan(numpy.power(x, -1)),
@@ -151,25 +151,6 @@ def known_equal_pair(test_expr, target_expr):
         return (False, "known")
 
 
-def parse_relations(match_object):
-    """To ensure that relations like >, >= or == are not evaluated, swap them with Rel class.
-
-       Function to take in a regular expression match from RELATIONS_REGEX and
-       replace the string with an actual Relation class from sympy. This is required
-       to stop sympy from immediately evaluating all inequalities. It's recursive,
-       which should allow nested inequalities - but this functionality may be removed.
-        - 'match_object' should be a regex match object matching RELATIONS_REGEX.
-    """
-    lhs = match_object.group(1).strip()
-    relation = match_object.group(2)
-    rhs = match_object.group(3).strip()
-    if (relation == "=="):
-        # Override the default equality relation to use a custom (human-readable) one.
-        return "Eq(%s,%s)" % (lhs, rhs)
-    else:
-        return "Rel(%s,%s,'%s')" % (lhs, rhs, relation)
-
-
 def parse_expression(expression_str, transforms, local_dict, global_dict):
     """Take a string containing a mathematical expression and return a sympy expression.
 
@@ -186,8 +167,7 @@ def parse_expression(expression_str, transforms, local_dict, global_dict):
           actual functions they will call when evaluated.
     """
     try:
-        expression_str = re.sub(RELATIONS_REGEX, parse_relations, expression_str)  # To ensure not evaluated, swap relations with Rel class
-        parsed_expr = sympy_parser.parse_expr(expression_str, transformations=transforms, local_dict=local_dict, global_dict=global_dict, evaluate=False)
+        parsed_expr = parsing.parse_expr(expression_str, transformations=transforms, local_dict=local_dict, global_dict=global_dict)
         return parsed_expr
     except (sympy.parsing.sympy_tokenize.TokenError, SyntaxError, TypeError, AttributeError, NumericRangeException) as e:
         print "Incorrectly formatted expression."
@@ -300,9 +280,10 @@ def exact_match(test_expr, target_expr):
        This equality checking does not expand brackets or perform much simplification,
        so is useful for checking if the submitted answer requires simplifying.
        Testing is first done using '==' which checks that the order of symbols
-       matches and will not recognise 'x + 1' as equal to '1 + x'.
-       The 'srepr' method outputs sympy's internal representation in a canonical form
-       and thus, while performing no simplification, it allows ordering to be ignored
+       matches and will not recognise 'x + 1' as equal to '1 + x' since we use
+       'evaluate=False' everywhere which prevents sorting of arguments.
+       The 'srepr' method outputs sympy's internal representation in a canonical sorted
+       form and thus, while performing no simplification, it allows ordering to be ignored
        in exact match checking. These two forms are treated equivalently as 'exact'
        matching.
 
@@ -317,6 +298,8 @@ def exact_match(test_expr, target_expr):
         print "Exact Match (with '==')"
         return True
     elif sympy.srepr(test_expr) == sympy.srepr(target_expr):
+        # This is a (perfectly acceptable) hack for ordering the atoms of each
+        # term, but a more explicit method may be preferable in the future.
         print "Exact Match (with 'srepr')"
         return True
     else:
@@ -365,7 +348,9 @@ def numeric_equality(test_expr, target_expr, complexify=False):
        several major flaws. It will sample the test and target functions over
        the free parameters of the target expression. If the test expression has
        more symbols, the parameter space is extended to include these (to test for
-       cases where these parameters make no difference).
+       cases where these parameters make no difference). Testing is performed on
+       the interval [0, 1) and if 'complexify' is set then complex values are
+       allowed, but the samples are still in the interval [0, 1) on the real line.
 
        Returns True if the two expressions are equal for the sampled points, and
        False otherwise.
@@ -424,7 +409,7 @@ def numeric_equality(test_expr, target_expr, complexify=False):
     test_variables = shared_variables + extra_test_variables
 
     # Make the target expression into something numpy can evaluate, then evaluate
-    # for the ten points. This *should* now be safe, but still could be dangerous.
+    # for the sample points. This *should* now be safe, but still could be dangerous.
     f_target = sympy.lambdify(shared_variables, target_expr_n, lambdify_modules)
     eval_f_target = f_target(*domain_target)
 
@@ -691,9 +676,9 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
 
     print "[[PARSE EXPRESSIONS]]"
     # Parse the trusted target expression:
-    target_expr = parse_expression(target_str, transforms=transforms, local_dict=local_dict, global_dict=global_dict)
+    target_expr = parse_expression(target_str, transforms=TRANSFORMS, local_dict=local_dict, global_dict=GLOBAL_DICT)
     # Parse the untrusted test expression:
-    test_expr = parse_expression(test_str, transforms=transforms, local_dict=local_dict, global_dict=global_dict)
+    test_expr = parse_expression(test_str, transforms=TRANSFORMS, local_dict=local_dict, global_dict=GLOBAL_DICT)
 
     if target_expr is None:
         print "ERROR: TRUSTED EXPRESSION CANNOT BE PARSED!"
