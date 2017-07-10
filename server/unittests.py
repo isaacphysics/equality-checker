@@ -440,6 +440,20 @@ class TestEqualityChecker(unittest.TestCase):
         self.assertTrue(equal, "Expected expressions to be found numerically equal!")
         print "   PASS   ".center(75, "#")
 
+    def test_log_functions_numeric(self):
+        print "\n\n\n" + " Test if log(x) and log(x, y) Work Numerically ".center(75, "#")
+        from sympy import symbols, log
+        x, y = symbols('x,y')
+        test_expr = log(x) + log(x, y, evaluate=False) + log(x)/log(y)
+        target_expr = log(x) + 2 * log(x, y, evaluate=False)
+
+        print "Target expression: '%s'" % target_expr
+        print "Test expression: '%s'" % test_expr
+        equal = api.numeric_equality(test_expr, target_expr)
+
+        self.assertTrue(equal, "Expected expressions to be found numerically equal!")
+        print "   PASS   ".center(75, "#")
+
     def test_derivatives_numeric(self):
         print "\n\n\n" + " Test if Derivatives Work Numerically ".center(75, "#")
         from sympy import symbols, Derivative

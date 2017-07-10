@@ -364,9 +364,12 @@ def numeric_equality(test_expr, target_expr, complexify=False):
     SAMPLE_POINTS = 25
     lambdify_modules = [NUMPY_MISSING_FN, "numpy"]
 
-    # Leave original expressions unchanged!
-    target_expr_n = target_expr
-    test_expr_n = test_expr
+    # Leave original expressions unchanged, and expand logarithms!
+    # NumPy has a log(x) function that takes only one argument, whereas SymPy
+    # has a log(x, base) function which would break when calling lambdify if it
+    # was left unexpanded.
+    target_expr_n = sympy.expand_log(target_expr)
+    test_expr_n = sympy.expand_log(test_expr)
 
     # Replace any derivatives that exist with new dummy symbols, and treat them
     # as independent from the variables they involve. To avoid naming clashes,
