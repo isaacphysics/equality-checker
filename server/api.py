@@ -127,9 +127,10 @@ def cleanup_string(string):
     # Flask gives us unicode objects anyway, the command line might not!
     if type(string) != unicode:
         string = unicode(string.decode('utf-8'))  # We'll hope it's UTF-8
-    string = re.sub(r'([^0-9])\.([^0-9])', '\g<1> \g<2>', string)  # Allow the . character only surrounded by numbers
-    string = string.replace("[", "").replace("]", "")  # This will probably prevent matricies, but good for now
-    string = string.replace("'", "").replace('"', '')  # We don't need these characters
+    string = re.sub(r'([^0-9])\.([^0-9])|(.?)\.([^0-9])|([^0-9])\.(.?)', '\g<1> \g<2>', string)  # Allow the . character only surrounded by numbers
+    string = string.replace(",", " ")  # Commas are bad, this will prevent vectors though
+    string = string.replace("[", " ").replace("]", " ")  # This will also prevent matricies, but good for now
+    string = string.replace("'", " ").replace('"', ' ')  # We don't need these characters
     string = string.replace("lambda", "lamda").replace("Lambda", "Lamda")  # We can't override the built-in keyword
     string = string.replace("__", " ")  # We don't need double underscores, exploits do
     return string
