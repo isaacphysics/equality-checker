@@ -625,7 +625,7 @@ GLOBAL_DICT = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy.
                "sqrt": sympy.sqrt, "abs": sympy.Abs,  # "factorial": factorial,
                "iI": sympy.I, "piPI": sympy.pi, "eE": sympy.E,
                "lamda": sympy.abc.lamda, "Rel": sympy.Rel, "Eq": Equal,
-               "Derivative": sympy.Derivative}
+               "Derivative": sympy.Derivative, "diff": sympy.Derivative}
 
 
 def check(test_str, target_str, symbols=None, check_symbols=True, description=None,
