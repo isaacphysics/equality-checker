@@ -434,15 +434,18 @@ def numeric_equality(test_expr, target_expr, complexify=False):
     extra_test_variables = list(test_expr_n.free_symbols.difference(target_expr_n.free_symbols))
     test_variables = shared_variables + extra_test_variables
 
-    # Make the target expression into something numpy can evaluate, then evaluate
-    # for the sample points. This *should* now be safe, but still could be dangerous.
-    f_target = sympy.lambdify(shared_variables, target_expr_n, lambdify_modules)
-    eval_f_target = f_target(*domain_target)
+    try:
+        # Make the target expression into something numpy can evaluate, then evaluate
+        # for the sample points. This *should* now be safe, but still could be dangerous.
+        f_target = sympy.lambdify(shared_variables, target_expr_n, lambdify_modules)
+        eval_f_target = f_target(*domain_target)
 
-    # Repeat for the test expression, to get an array of containing SAMPLE_POINTS
-    # values of test_expr_n to be compared to target_expr_n
-    f_test = sympy.lambdify(test_variables, test_expr_n, lambdify_modules)
-    eval_f_test = f_test(*domain_test)
+        # Repeat for the test expression, to get an array of containing SAMPLE_POINTS
+        # values of test_expr_n to be compared to target_expr_n
+        f_test = sympy.lambdify(test_variables, test_expr_n, lambdify_modules)
+        eval_f_test = f_test(*domain_test)
+    except OverflowError as e:
+        raise NumericRangeException(e.message)
 
     # Output the function values at the sample points for debugging?
     # The actual domain arrays are probably too long to be worth ever printing.
@@ -450,6 +453,13 @@ def numeric_equality(test_expr, target_expr, complexify=False):
     print eval_f_target
     print "Test function value(s):"
     print eval_f_test
+
+    # Can we safely cast the values to 64 bit floats (2 x 64 bits for complex values)?
+    # Real values that can be safely cast to 'float64' can always be cast to 'complex128'
+    # safely as well, and since eval_f_test may be complex, this errs on the side of caution.
+    safe_datatype = "complex128"
+    if not all([numpy.can_cast(a, safe_datatype, casting='safe') for a in [eval_f_target, eval_f_test]]):
+        raise NumericRangeException("A function has values not representable by 64 bit floats!")
 
     # If get any NaN's from the functions; things are looking bad:
     if numpy.any(numpy.isnan(eval_f_target)) or numpy.any(numpy.isnan(eval_f_test)):
