@@ -151,6 +151,7 @@ def cleanup_string(string):
     string = re.sub(r'([^0-9])\.([^0-9])|(.?)\.([^0-9])|([^0-9])\.(.?)', '\g<1> \g<2>', string)  # Allow the . character only surrounded by numbers
     string = string.replace("lambda", "lamda").replace("Lambda", "Lamda")  # We can't override the built-in keyword
     string = string.replace("__", " ")  # We don't need double underscores, exploits do
+    string = re.sub(r'(?<![=<>])=(?![=<>])', '==', string)  # Replace all single equals signs with double equals
     # Replace Unicode equivalents:
     string = string.replace(u"\u00B2", "**2").replace(u"\u00B3", "**3")
     string = string.replace(u"\u00BC", "(1/4)").replace(u"\u00BD", "(1/2)").replace(u"\u00BE", "(3/4)")
