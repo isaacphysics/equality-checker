@@ -46,6 +46,23 @@ NUMPY_MISSING_FN = {"csc": lambda x: 1/numpy.sin(x), "sec": lambda x: 1/numpy.co
 # evaluation and so the two effects cancel out. Neat!)
 NUMPY_COMPLEX_FN = {k: lambda x, f=NUMPY_MISSING_FN[k]: f(x + 0j) for k in NUMPY_MISSING_FN.keys()}
 
+# We need to sanitise Unicode user input. Whitelist allowed characters:
+ALLOWED_CHARACTER_LIST = ["\x20",            # space
+                          "\x28-\x29",       # left and right brackets
+                          "\x2A-\x2F",       # times, plus, comma, minus, decimal point, divide
+                          "\x30-\x39",       # numbers 0-9
+                          "\x3C-\x3E",       # less than, equal, greater than
+                          "\x41-\x5A",       # uppercase letters A-Z
+                          "\x5E-\x5F",       # caret symbol, underscore
+                          "\x61-\x7A",       # lowercase letters a-z
+                          u"\u00B1",         # plus or minus symbol
+                          u"\u00B2-\u00B3",  # squared and cubed notation
+                          u"\u00BC-\u00BE",  # quarter, half, three quarters
+                          u"\u00D7",         # unicode times sign
+                          u"\u00F7"]         # unicode division sign
+# Join these into a regular expression that matches everything except allowed characters:
+UNSAFE_CHARACTERS_REGEX = r"[^" + "".join(ALLOWED_CHARACTER_LIST) + r"]+"
+
 
 class NumericRangeException(Exception):
     """An exception to be raised when numeric values are rejected."""
@@ -128,14 +145,16 @@ def cleanup_string(string):
        sympy; try and remove the worst offending things from strings.
     """
     # Flask gives us unicode objects anyway, the command line might not!
-    if type(string) != unicode:
+    if not isinstance(string, unicode):
         string = unicode(string.decode('utf-8'))  # We'll hope it's UTF-8
+    string = re.sub(UNSAFE_CHARACTERS_REGEX, ' ', string)  # Replace all non-whitelisted characters with spaces
     string = re.sub(r'([^0-9])\.([^0-9])|(.?)\.([^0-9])|([^0-9])\.(.?)', '\g<1> \g<2>', string)  # Allow the . character only surrounded by numbers
-    string = string.replace(",", " ")  # Commas are bad, this will prevent vectors though
-    string = string.replace("[", " ").replace("]", " ")  # This will also prevent matricies, but good for now
-    string = string.replace("'", " ").replace('"', ' ')  # We don't need these characters
     string = string.replace("lambda", "lamda").replace("Lambda", "Lamda")  # We can't override the built-in keyword
     string = string.replace("__", " ")  # We don't need double underscores, exploits do
+    # Replace Unicode equivalents:
+    string = string.replace(u"\u00B2", "**2").replace(u"\u00B3", "**3")
+    string = string.replace(u"\u00BC", "(1/4)").replace(u"\u00BD", "(1/2)").replace(u"\u00BE", "(3/4)")
+    string = string.replace(u"\u00D7", "*").replace(u"\u00F7", "/")
     return string
 
 
