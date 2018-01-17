@@ -13,17 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
+import signal
+import numpy
+
+import parsing
+
 from flask import Flask, request, jsonify, abort
 from werkzeug.exceptions import default_exceptions
 from werkzeug.exceptions import HTTPException
+import sympy
+import sympy.abc
 from sympy.parsing import sympy_parser
 from sympy.core.numbers import Integer, Float, Rational
-import sympy.abc
-import sympy
-import numpy
-import re
-import signal
-import parsing
 
 
 __all__ = ["check"]
@@ -32,6 +34,7 @@ app = Flask(__name__)
 
 MAX_REQUEST_COMPUTATION_TIME = 5
 KNOWN_PAIRS = dict()
+
 # Numpy (understandably) doesn't have all 24 trig functions defined. Define those missing for completeness. (No hyperbolic inverses for now!)
 NUMPY_MISSING_FN = {"csc": lambda x: 1/numpy.sin(x), "sec": lambda x: 1/numpy.cos(x), "cot": lambda x: 1/numpy.tan(x),
                     "acsc": lambda x: numpy.arcsin(numpy.power(x, -1)), "asec": lambda x: numpy.arccos(numpy.power(x, -1)), "acot": lambda x: numpy.arctan(numpy.power(x, -1)),
@@ -59,7 +62,7 @@ class TimeoutException(Exception):
     pass
 
 
-class TimeoutProtection:
+class TimeoutProtection(object):
     """A custom class to abort long-running code.
 
        The timeout cannot interrupt libraries running external C code, and so
@@ -77,21 +80,21 @@ class TimeoutProtection:
         except AttributeError:
             self.timeout_allowed = False
 
-    def handle_timeout(self, signal_number, frame):
+    @staticmethod
+    def handle_timeout(signal_number, frame):
         """The callback function to handle the signal being raised."""
         raise TimeoutException()
 
     def __enter__(self):
         """Allows a 'with' block. If can set an alarm, do so."""
         if self.timeout_allowed:
-            signal.signal(signal.SIGALRM, self.handle_timeout)
+            signal.signal(signal.SIGALRM, TimeoutProtection.handle_timeout)
             signal.alarm(self.duration)
         else:
             # We can't use SIGALRM
             print "WARN: Timeout Unsupported!"
-            pass
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, _type, value, traceback):
         """Cancels alarm after 'with' block exits."""
         if self.timeout_allowed:
             signal.alarm(0)
@@ -829,6 +832,7 @@ def check_endpoint():
 
 @app.route('/', methods=["GET"])
 def ping():
+    """Allow monitoring Flask status."""
     return jsonify(code=200)
 
 
