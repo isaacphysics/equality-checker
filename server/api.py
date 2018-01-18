@@ -32,7 +32,8 @@ __all__ = ["check"]
 app = Flask(__name__)
 
 
-MAX_REQUEST_COMPUTATION_TIME = 5
+MAX_REQUEST_COMPUTATION_TIME = 5  # How long should we spend on a single request?
+REJECT_UNSAFE_INPUT = True  # Should we sanitise input and proceed, or just reject it?
 KNOWN_PAIRS = dict()
 
 # Numpy (understandably) doesn't have all 24 trig functions defined. Define those missing for completeness. (No hyperbolic inverses for now!)
@@ -66,6 +67,11 @@ UNSAFE_CHARACTERS_REGEX = r"[^" + "".join(ALLOWED_CHARACTER_LIST) + r"]+"
 
 class NumericRangeException(Exception):
     """An exception to be raised when numeric values are rejected."""
+    pass
+
+
+class UnsafeInputException(ValueError):
+    """An exception to be raised when unexpected input is provided."""
     pass
 
 
@@ -147,7 +153,18 @@ def cleanup_string(string):
     # Flask gives us unicode objects anyway, the command line might not!
     if not isinstance(string, unicode):
         string = unicode(string.decode('utf-8'))  # We'll hope it's UTF-8
-    string = re.sub(UNSAFE_CHARACTERS_REGEX, ' ', string)  # Replace all non-whitelisted characters with spaces
+    # Replace all non-whitelisted characters in the input:
+    string = re.sub(UNSAFE_CHARACTERS_REGEX, '?', string)
+    if REJECT_UNSAFE_INPUT:
+        # If we have non-whitelisted charcaters, raise an exception:
+        if "?" in string:
+            # We replaced all non-whitelisted characters with '?' (and '?' is not whitelisted)
+            # so if any '?' characters exist the string must have contained bad input.
+            raise UnsafeInputException("Unexpected input characters provided!")
+    else:
+        # otherwise just swap the blacklisted characters for spaces and proceed.
+        string = string.replace("?", " ")
+    # Further cleanup, because some allowed characters are only allowed in certain circumstances:
     string = re.sub(r'([^0-9])\.([^0-9])|(.?)\.([^0-9])|([^0-9])\.(.?)', '\g<1> \g<2>', string)  # Allow the . character only surrounded by numbers
     string = string.replace("lambda", "lamda").replace("Lambda", "Lamda")  # We can't override the built-in keyword
     string = string.replace("__", " ")  # We don't need double underscores, exploits do
@@ -687,8 +704,11 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
         return dict(error="Empty string as argument.")
 
     # Cleanup the strings before anything is done to them:
-    target_str = cleanup_string(target_str)
-    test_str = cleanup_string(test_str)
+    try:
+        target_str = cleanup_string(target_str)
+        test_str = cleanup_string(test_str)
+    except UnsafeInputException:
+        return dict(error="Bad input provided!")
 
     # Suppress this output:
     if not _quiet:
