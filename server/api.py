@@ -699,8 +699,20 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
         - '_quiet' is an internal argument used to suppress some output when
           this function is called from plus_minus_checker().
     """
+
+    # Suppress this output if necessary:
+    if not _quiet:
+        print "=" * 50
+        # For logging purposes, if we have a description: print it!
+        if description is not None:
+            print description
+            print "=" * 50
+
     # If nothing to parse, fail. On server, this will be caught in check_endpoint()
     if (target_str == "") or (test_str == ""):
+        print "ERROR: No input provided!"
+        if not _quiet:
+            print "=" * 50
         return dict(error="Empty string as argument.")
 
     # Cleanup the strings before anything is done to them:
@@ -708,15 +720,11 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
         target_str = cleanup_string(target_str)
         test_str = cleanup_string(test_str)
     except UnsafeInputException:
-        return dict(error="Bad input provided!")
-
-    # Suppress this output:
-    if not _quiet:
-        print "=" * 50
-        # For logging purposes, if we have a description: print it!
-        if description is not None:
-            print description
+        print "ERROR: Input contained non-whitelisted characters!"
+        print "Test string: '%s'" % test_str
+        if not _quiet:
             print "=" * 50
+        return dict(error="Bad input provided!")
 
     print "Target string: '%s'" % target_str
     print "Test string: '%s'" % test_str
