@@ -188,7 +188,7 @@ def parse_expression(expression_str, local_dict=None):
         return parsed_expr
     except (sympy.parsing.sympy_tokenize.TokenError, SyntaxError, TypeError, AttributeError, NumericRangeException) as e:
         print "Incorrectly formatted expression."
-        print "ERROR: ", e, e.message
+        print ("ERROR: %s - %s" % (type(e).__name__, e.message)).strip(":- ")
         print "Fail: '%s'." % expression_str
         return None
 
