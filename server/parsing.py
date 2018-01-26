@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from sympy.parsing import sympy_parser
 import sympy
 import sympy.abc
+from sympy.parsing import sympy_parser, sympy_tokenize
 from sympy.core.numbers import Integer, Float, Rational
+from sympy.core.basic import Basic
 import ast
 import re
 
@@ -47,6 +48,47 @@ def factorial(n):
         raise ValueError("[Factorial]: Too large integer to compute factorial effectively!")
     else:
         return sympy.factorial(n)
+
+
+#####
+# Custom SymPy Parser Transformations:
+#####
+
+
+def auto_symbol(tokens, local_dict, global_dict):
+    """Replace the sympy builtin auto_symbol with a much more aggressive version.
+
+       We have to replace this, because SymPy attempts to be too accepting of
+       what it considers to be valid input and allows Pythonic behaviour.
+       We only really want pure mathematics notations where possible!"""
+    result = []
+    # As with all tranformations, we have to iterate through the tokens and
+    # return the modified list of tokens:
+    for tok in tokens:
+        tokNum, tokVal = tok
+        if tokNum == sympy_tokenize.NAME:
+            name = tokVal
+            # Check if the token name is in the local/global dictionaries.
+            # If it is, convert it correctly, otherwise leave untouched.
+            if name in local_dict:
+                result.append((sympy_tokenize.NAME, name))
+                continue
+            elif name in global_dict:
+                obj = global_dict[name]
+                if isinstance(obj, (Basic, type)) or callable(obj):
+                    # If it's a function/basic class, don't convert it to a Symbol!
+                    result.append((sympy_tokenize.NAME, name))
+                    continue
+            result.extend([
+                (sympy_tokenize.NAME, 'Symbol'),
+                (sympy_tokenize.OP, '('),
+                (sympy_tokenize.NAME, repr(str(name))),
+                (sympy_tokenize.OP, ')'),
+            ])
+        else:
+            result.append((tokNum, tokVal))
+
+    return result
 
 
 #####
@@ -109,7 +151,7 @@ class EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
 # These constants are needed to address some security issues.
 # We don't want to use the default transformations, and we need to use a
 # whitelist of functions the parser should allow to match.
-_TRANSFORMS = (sympy.parsing.sympy_parser.auto_number, sympy.parsing.sympy_parser.auto_symbol,
+_TRANSFORMS = (sympy.parsing.sympy_parser.auto_number, auto_symbol,
                sympy.parsing.sympy_parser.convert_xor, sympy_parser.split_symbols, sympy_parser.implicit_multiplication)
 
 _GLOBAL_DICT = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy.Float, "Rational": sympy.Rational,

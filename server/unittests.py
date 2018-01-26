@@ -420,6 +420,21 @@ class TestEqualityChecker(unittest.TestCase):
         self.assertTrue(response["equality_type"] != "exact", 'For these expressions, expected "equality_type" not to be "exact", got "%s"!' % response["equality_type"])
         print "   PASS   ".center(75, "#")
 
+    def test_keywords_not_special(self):
+        print "\n\n\n" + " Test if Python Keywords are Ignored ".center(75, "#")
+        test_str = "2as + 4for"
+        target_str = "2*a*s + 4*f*o*r"
+        symbols = None
+        response = api.check(test_str, target_str, symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "%s"!' % response["equal"])
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
+        self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "%s"!' % response["equality_type"])
+        print "   PASS   ".center(75, "#")
+
 
 #####
 # These tests are for specific parts of the main checking code and may more easily
