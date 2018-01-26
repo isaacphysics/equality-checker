@@ -133,7 +133,7 @@ class EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
         # without their __new__() method raising a TypeError. There is probably
         # some underlying reason which we could take into account of.
         # For now, blacklist those known to be problematic:
-        _ignore_functions = ["Integer", "Float", "Symbol", "factorial", "sqrt"]
+        _ignore_functions = ["Integer", "Float", "Symbol", "factorial", "sqrt", "Sqrt"]
         if node.func.id in _ignore_functions:
             # print "\tIgnoring function: %s" % node.func.id
             pass
@@ -160,14 +160,21 @@ _GLOBAL_DICT = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy
                 "Rel": sympy.Rel, "Eq": Equal,
                 "Derivative": sympy.Derivative, "diff": sympy.Derivative,
                 "sin": sympy.sin, "cos": sympy.cos, "tan": sympy.tan,
+                "Sin": sympy.sin, "Cos": sympy.cos, "Tan": sympy.tan,
                 "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
+                "ArcSin": sympy.asin, "ArcCos": sympy.acos, "ArcTan": sympy.atan,
                 "sinh": sympy.sinh, "cosh": sympy.cosh, "tanh": sympy.tanh,
+                "arcsinh": sympy.asinh, "arccosh": sympy.acosh, "arctanh": sympy.atanh,
                 "cosec": sympy.csc, "sec": sympy.sec, "cot": sympy.cot,
+                "Csc": sympy.csc, "Sec": sympy.sec, "Cot": sympy.cot,
                 "arccosec": sympy.acsc, "arcsec": sympy.asec, "arccot": sympy.acot,
+                "ArcCsc": sympy.acsc, "ArcSec": sympy.asec, "ArcCot": sympy.acot,
                 "cosech": sympy.csch, "sech": sympy.sech, "coth": sympy.coth,
                 "exp": sympy.exp, "log": sympy.log, "ln": sympy.ln,
-                "factorial": factorial,
-                "sqrt": sympy.sqrt, "abs": sympy.Abs}
+                "Exp": sympy.exp, "Log": sympy.log, "Ln": sympy.ln,
+                # "factorial": factorial,  "Factorial": factorial,
+                "sqrt": sympy.sqrt, "abs": sympy.Abs,
+                "Sqrt": sympy.sqrt, "Abs": sympy.Abs}
 
 
 def _replace_relations(match_object):
