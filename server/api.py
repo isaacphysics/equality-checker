@@ -23,9 +23,6 @@ from flask import Flask, request, jsonify, abort
 from werkzeug.exceptions import default_exceptions
 from werkzeug.exceptions import HTTPException
 import sympy
-import sympy.abc
-from sympy.parsing import sympy_parser
-from sympy.core.numbers import Integer, Float, Rational
 
 
 __all__ = ["check"]
@@ -123,27 +120,6 @@ class TimeoutProtection(object):
             signal.alarm(0)
 
 
-class Equal(sympy.Equality):
-    """A custom class to override sympy.Equality's str method."""
-    def __str__(self):
-        """Print the equation in a nice way!"""
-        return "%s == %s" % (self.lhs, self.rhs)
-
-
-def factorial(n):
-    """Stop sympy blindly calculating factorials no matter how large.
-
-       If 'n' is a number of some description, ensure that it is smaller than
-       a cutoff, otherwise sympy will simply evaluate it, no matter how long that
-       may take to complete!
-       - 'n' should be a sympy object, that sympy.factorial(...) can use.
-    """
-    if isinstance(n, (Integer, Float, Rational)) and n > 50:
-        raise NumericRangeException("[Factorial]: Too large integer to compute factorial effectively!")
-    else:
-        return sympy.factorial(n)
-
-
 def cleanup_string(string):
     """Some simple sanity checking and cleanup to perform on passed in strings.
 
@@ -192,7 +168,7 @@ def known_equal_pair(test_expr, target_expr):
         return (False, "known")
 
 
-def parse_expression(expression_str, transforms, local_dict, global_dict):
+def parse_expression(expression_str, local_dict=None):
     """Take a string containing a mathematical expression and return a sympy expression.
 
        Use sympy's parse_expr(...) function to take the string and convert it to
@@ -208,7 +184,7 @@ def parse_expression(expression_str, transforms, local_dict, global_dict):
           actual functions they will call when evaluated.
     """
     try:
-        parsed_expr = parsing.parse_expr(expression_str, transformations=transforms, local_dict=local_dict, global_dict=global_dict)
+        parsed_expr = parsing.parse_expr(expression_str, local_dict=local_dict)
         return parsed_expr
     except (sympy.parsing.sympy_tokenize.TokenError, SyntaxError, TypeError, AttributeError, NumericRangeException) as e:
         print "Incorrectly formatted expression."
@@ -659,26 +635,6 @@ def plus_minus_checker(test_str, target_str, symbols=None, check_symbols=True):
             )
 
 
-# These two lines address some security issues - don't use default transformations, and whitelist of functions to match.
-# This can't stop some builtin functions, but hopefully removing "." and "[]" will reduce this problem
-TRANSFORMS = (sympy.parsing.sympy_parser.auto_number, sympy.parsing.sympy_parser.auto_symbol,
-              sympy.parsing.sympy_parser.convert_xor, sympy_parser.split_symbols, sympy_parser.implicit_multiplication)
-GLOBAL_DICT = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy.Float, "Rational": sympy.Rational,
-               "Mul": sympy.Mul, "Pow": sympy.Pow, "Add": sympy.Add,
-               "sin": sympy.sin, "cos": sympy.cos, "tan": sympy.tan,
-               "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
-               "sinh": sympy.sinh, "cosh": sympy.cosh, "tanh": sympy.tanh,
-               "arcsinh": sympy.asinh, "arccosh": sympy.acosh, "arctanh": sympy.atanh,
-               "cosec": sympy.csc, "sec": sympy.sec, "cot": sympy.cot,
-               "arccosec": sympy.acsc, "arcsec": sympy.asec, "arccot": sympy.acot,
-               "cosech": sympy.csch, "sech": sympy.sech, "coth": sympy.coth,
-               "exp": sympy.exp, "log": sympy.log, "ln": sympy.ln,
-               "sqrt": sympy.sqrt, "abs": sympy.Abs,  # "factorial": factorial,
-               "iI": sympy.I, "piPI": sympy.pi, "eE": sympy.E,
-               "lamda": sympy.abc.lamda, "Rel": sympy.Rel, "Eq": Equal,
-               "Derivative": sympy.Derivative, "diff": sympy.Derivative}
-
-
 def check(test_str, target_str, symbols=None, check_symbols=True, description=None,
           _quiet=False):
     """The main checking function, calls each of the equality checking functions as required.
@@ -741,9 +697,9 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
 
     print "[[PARSE EXPRESSIONS]]"
     # Parse the trusted target expression:
-    target_expr = parse_expression(target_str, transforms=TRANSFORMS, local_dict=local_dict, global_dict=GLOBAL_DICT)
+    target_expr = parse_expression(target_str, local_dict=local_dict)
     # Parse the untrusted test expression:
-    test_expr = parse_expression(test_str, transforms=TRANSFORMS, local_dict=local_dict, global_dict=GLOBAL_DICT)
+    test_expr = parse_expression(test_str, local_dict=local_dict)
 
     if target_expr is None:
         print "ERROR: TRUSTED EXPRESSION CANNOT BE PARSED!"

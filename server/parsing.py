@@ -13,11 +13,45 @@
 # limitations under the License.
 
 from sympy.parsing import sympy_parser
+import sympy
+import sympy.abc
+from sympy.core.numbers import Integer, Float, Rational
 import ast
 import re
 
 
 RELATIONS_REGEX = '(.*?)(==|<=|>=|<|>)(.*)'
+
+
+#####
+# Custom Symbol / Function / Operator Classes:
+#####
+
+
+class Equal(sympy.Equality):
+    """A custom class to override sympy.Equality's str method."""
+    def __str__(self):
+        """Print the equation in a nice way!"""
+        return "%s == %s" % (self.lhs, self.rhs)
+
+
+def factorial(n):
+    """Stop sympy blindly calculating factorials no matter how large.
+
+       If 'n' is a number of some description, ensure that it is smaller than
+       a cutoff, otherwise sympy will simply evaluate it, no matter how long that
+       may take to complete!
+       - 'n' should be a sympy object, that sympy.factorial(...) can use.
+    """
+    if isinstance(n, (Integer, Float, Rational)) and n > 50:
+        raise ValueError("[Factorial]: Too large integer to compute factorial effectively!")
+    else:
+        return sympy.factorial(n)
+
+
+#####
+# Customised SymPy Internals:
+#####
 
 
 def evaluateFalse(s):
@@ -68,7 +102,33 @@ class EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
         return node
 
 
-def parse_relations(match_object):
+#####
+# Custom Parsers:
+#####
+
+# These constants are needed to address some security issues.
+# We don't want to use the default transformations, and we need to use a
+# whitelist of functions the parser should allow to match.
+_TRANSFORMS = (sympy.parsing.sympy_parser.auto_number, sympy.parsing.sympy_parser.auto_symbol,
+               sympy.parsing.sympy_parser.convert_xor, sympy_parser.split_symbols, sympy_parser.implicit_multiplication)
+
+_GLOBAL_DICT = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy.Float, "Rational": sympy.Rational,
+                "Mul": sympy.Mul, "Pow": sympy.Pow, "Add": sympy.Add,
+                "iI": sympy.I, "piPI": sympy.pi, "eE": sympy.E,
+                "Rel": sympy.Rel, "Eq": Equal,
+                "Derivative": sympy.Derivative, "diff": sympy.Derivative,
+                "sin": sympy.sin, "cos": sympy.cos, "tan": sympy.tan,
+                "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
+                "sinh": sympy.sinh, "cosh": sympy.cosh, "tanh": sympy.tanh,
+                "cosec": sympy.csc, "sec": sympy.sec, "cot": sympy.cot,
+                "arccosec": sympy.acsc, "arcsec": sympy.asec, "arccot": sympy.acot,
+                "cosech": sympy.csch, "sech": sympy.sech, "coth": sympy.coth,
+                "exp": sympy.exp, "log": sympy.log, "ln": sympy.ln,
+                "factorial": factorial,
+                "sqrt": sympy.sqrt, "abs": sympy.Abs}
+
+
+def _replace_relations(match_object):
     """To ensure that relations like >, >= or == are not evaluated, swap them with Rel class.
 
        Function to take in a regular expression match from RELATIONS_REGEX and
@@ -87,14 +147,16 @@ def parse_relations(match_object):
         return "Rel(%s,%s,'%s')" % (lhs, rhs, relation)
 
 
-def parse_expr(expression_str, transformations=sympy_parser.standard_transformations, local_dict=None, global_dict=None):
+def parse_expr(expression_str, transformations=_TRANSFORMS, local_dict=None, global_dict=_GLOBAL_DICT):
     """A clone of sympy.sympy_parser.parse_expr(...) which prevents all evaluation.
 
        This is almost a direct copy of the SymPy code, but it also converts inline
        relations like "==" or ">=" to the Relation class to prevent evaluation.
 
     """
-    expression_str = re.sub(RELATIONS_REGEX, parse_relations, expression_str)  # To ensure not evaluated, swap relations with Rel class
+    if local_dict is None:
+        local_dict = {}
+    expression_str = re.sub(RELATIONS_REGEX, _replace_relations, expression_str)  # To ensure not evaluated, swap relations with Rel class
     code = sympy_parser.stringify_expr(expression_str, local_dict, global_dict, transformations)
     ef_code = evaluateFalse(code)
     code_compiled = compile(ef_code, '<string>', 'eval')
