@@ -13,24 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-import signal
 import numpy
+import sympy
 
 import parsing
 
-from flask import Flask, request, jsonify, abort
-from werkzeug.exceptions import default_exceptions
-from werkzeug.exceptions import HTTPException
-import sympy
-
 
 __all__ = ["check"]
-app = Flask(__name__)
 
 
-MAX_REQUEST_COMPUTATION_TIME = 5  # How long should we spend on a single request?
-REJECT_UNSAFE_INPUT = True  # Should we sanitise input and proceed, or just reject it?
 KNOWN_PAIRS = dict()
 
 # Numpy (understandably) doesn't have all 24 trig functions defined. Define those missing for completeness. (No hyperbolic inverses for now!)
@@ -44,112 +35,15 @@ NUMPY_MISSING_FN = {"csc": lambda x: 1/numpy.sin(x), "sec": lambda x: 1/numpy.co
 # evaluation and so the two effects cancel out. Neat!)
 NUMPY_COMPLEX_FN = {k: lambda x, f=NUMPY_MISSING_FN[k]: f(x + 0j) for k in NUMPY_MISSING_FN.keys()}
 
-# We need to sanitise Unicode user input. Whitelist allowed characters:
-ALLOWED_CHARACTER_LIST = ["\x20",            # space
-                          "\x28-\x29",       # left and right brackets
-                          "\x2A-\x2F",       # times, plus, comma, minus, decimal point, divide
-                          "\x30-\x39",       # numbers 0-9
-                          "\x3C-\x3E",       # less than, equal, greater than
-                          "\x41-\x5A",       # uppercase letters A-Z
-                          "\x5E-\x5F",       # caret symbol, underscore
-                          "\x61-\x7A",       # lowercase letters a-z
-                          u"\u00B1",         # plus or minus symbol
-                          u"\u00B2-\u00B3",  # squared and cubed notation
-                          u"\u00BC-\u00BE",  # quarter, half, three quarters
-                          u"\u00D7",         # unicode times sign
-                          u"\u00F7"]         # unicode division sign
-# Join these into a regular expression that matches everything except allowed characters:
-UNSAFE_CHARACTERS_REGEX = r"[^" + "".join(ALLOWED_CHARACTER_LIST) + r"]+"
-
 
 class NumericRangeException(Exception):
     """An exception to be raised when numeric values are rejected."""
     pass
 
 
-class UnsafeInputException(ValueError):
-    """An exception to be raised when unexpected input is provided."""
-    pass
-
-
 class EquationTypeMismatch(TypeError):
     """An exception to be raised when equations are compared to expressions."""
     pass
-
-
-class TimeoutException(Exception):
-    """An exception to be raised if simplification takes too long to finish."""
-    pass
-
-
-class TimeoutProtection(object):
-    """A custom class to abort long-running code.
-
-       The timeout cannot interrupt libraries running external C code, and so
-       care must be taken. See http://stackoverflow.com/a/22348885 for source.
-       On platforms which do not support SIGALRM (notably Windows), the code will
-       run without timeout protection and merely print a warning to the console.
-        - 'duration' is the number of seconds to allow the code to run for before
-          raising a TimeoutException.
-    """
-    def __init__(self, duration=10):
-        self.duration = duration
-        self.timeout_allowed = True
-        try:
-            signal.SIGALRM
-        except AttributeError:
-            self.timeout_allowed = False
-
-    @staticmethod
-    def handle_timeout(signal_number, frame):
-        """The callback function to handle the signal being raised."""
-        raise TimeoutException()
-
-    def __enter__(self):
-        """Allows a 'with' block. If can set an alarm, do so."""
-        if self.timeout_allowed:
-            signal.signal(signal.SIGALRM, TimeoutProtection.handle_timeout)
-            signal.alarm(self.duration)
-        else:
-            # We can't use SIGALRM
-            print "WARN: Timeout Unsupported!"
-
-    def __exit__(self, _type, value, traceback):
-        """Cancels alarm after 'with' block exits."""
-        if self.timeout_allowed:
-            signal.alarm(0)
-
-
-def cleanup_string(string):
-    """Some simple sanity checking and cleanup to perform on passed in strings.
-
-       Since arbitrary strings are passed in, and 'eval' is used implicitly by
-       sympy; try and remove the worst offending things from strings.
-    """
-    # Flask gives us unicode objects anyway, the command line might not!
-    if not isinstance(string, unicode):
-        string = unicode(string.decode('utf-8'))  # We'll hope it's UTF-8
-    # Replace all non-whitelisted characters in the input:
-    string = re.sub(UNSAFE_CHARACTERS_REGEX, '?', string)
-    if REJECT_UNSAFE_INPUT:
-        # If we have non-whitelisted charcaters, raise an exception:
-        if "?" in string:
-            # We replaced all non-whitelisted characters with '?' (and '?' is not whitelisted)
-            # so if any '?' characters exist the string must have contained bad input.
-            raise UnsafeInputException("Unexpected input characters provided!")
-    else:
-        # otherwise just swap the blacklisted characters for spaces and proceed.
-        string = string.replace("?", " ")
-    # Further cleanup, because some allowed characters are only allowed in certain circumstances:
-    string = re.sub(r'([^0-9])\.([^0-9])|(.?)\.([^0-9])|([^0-9])\.(.?)', '\g<1> \g<2>', string)  # Allow the . character only surrounded by numbers
-    string = string.replace("lambda", "lamda").replace("Lambda", "Lamda")  # We can't override the built-in keyword
-    string = string.replace("__", " ")  # We don't need double underscores, exploits do
-    string = re.sub(r'(?<![=<>])=(?![=<>])', '==', string)  # Replace all single equals signs with double equals
-    # Replace Unicode equivalents:
-    string = string.replace(u"\u00B2", "**2").replace(u"\u00B3", "**3")
-    string = string.replace(u"\u00BC", "(1/4)").replace(u"\u00BD", "(1/2)").replace(u"\u00BE", "(3/4)")
-    string = string.replace(u"\u00D7", "*").replace(u"\u00F7", "/")
-    return string
 
 
 def known_equal_pair(test_expr, target_expr):
@@ -673,9 +567,9 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
 
     # Cleanup the strings before anything is done to them:
     try:
-        target_str = cleanup_string(target_str)
-        test_str = cleanup_string(test_str)
-    except UnsafeInputException:
+        target_str = parsing.cleanup_string(target_str, reject_unsafe_input=True)
+        test_str = parsing.cleanup_string(test_str, reject_unsafe_input=True)
+    except parsing.UnsafeInputException:
         print "ERROR: Input contained non-whitelisted characters!"
         print "Test string: '%s'" % test_str
         if not _quiet:
@@ -771,89 +665,3 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
         equal=str(equal).lower(),
         equality_type=equality_type
         )
-
-
-def make_json_error(ex):
-    """Return JSON error pages, not HTML!
-
-       Using a method suggested in http://flask.pocoo.org/snippets/83/, convert
-       all outgoing errors into JSON format.
-    """
-    status_code = ex.code if isinstance(ex, HTTPException) else 500
-    response = jsonify(message=str(ex), code=status_code, error=type(ex).__name__)
-    response.status_code = (status_code)
-    return response
-
-
-@app.route('/check', methods=["POST"])
-def check_endpoint():
-    """The route Flask uses to submit things to be checked."""
-    body = request.get_json(force=True)
-
-    if not (("test" in body) and ("target" in body)):
-        print "=" * 50
-        print "ERROR: Ill-formed request!"
-        print body
-        print "=" * 50
-        abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
-
-    target_str = body["target"]
-    test_str = body["test"]
-
-    if "description" in body:
-        description = str(body["description"])
-    else:
-        description = None
-
-    if (target_str == "") or (test_str == ""):
-        print "=" * 50
-        if description is not None:
-            print description
-            print "=" * 50
-        print "ERROR: Empty string in request!"
-        print "Target: '%s'\nTest: '%s'" % (target_str, test_str)
-        print "=" * 50
-        abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
-
-    if "symbols" in body:
-        symbols = str(body["symbols"])
-    else:
-        symbols = None
-
-    if "check_symbols" in body:
-        check_symbols = str(body["check_symbols"]).lower() == "true"
-    else:
-        check_symbols = True
-
-    # To reduce computation issues on single-threaded server, institute a timeout
-    # for requests. If it takes longer than this to process, return an error.
-    # This cannot interrupt numpy's computation, so care must be taken in selecting
-    # a value for MAX_REQUEST_COMPUTATION_TIME.
-    try:
-        with TimeoutProtection(MAX_REQUEST_COMPUTATION_TIME):
-            response_dict = check(test_str, target_str, symbols, check_symbols, description)
-            return jsonify(**response_dict)
-    except TimeoutException, e:
-        print "ERROR: %s - Request took too long to process, aborting!" % type(e).__name__
-        print "=" * 50
-        error_dict = dict(
-            target=target_str,
-            test=test_str,
-            error="Request took too long to process!",
-            )
-        return jsonify(**error_dict)
-
-
-@app.route('/', methods=["GET"])
-def ping():
-    """Allow monitoring Flask status."""
-    return jsonify(code=200)
-
-
-if __name__ == '__main__':
-    # Make sure all outgoing error messages are in JSON format.
-    # This will only work provided debug=False - otherwise the debugger hijacks them!
-    for code in default_exceptions.iterkeys():
-        app.register_error_handler(code, make_json_error)
-    # Then run the app
-    app.run(port=5000, host="0.0.0.0", debug=False)
