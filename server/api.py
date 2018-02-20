@@ -6,6 +6,12 @@ import sympy
 import parsing
 
 
+# Hack to fix a bug with lambdify and complex infinity ('zoo') when transforming
+# to NumPy for evaluation. Map complex infinity to Not a Number ('nan').
+from sympy.utilities.lambdify import NUMPY_TRANSLATIONS
+NUMPY_TRANSLATIONS["zoo"] = "nan"
+
+
 __all__ = ["check"]
 
 
