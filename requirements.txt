@@ -1,9 +1,14 @@
-click==6.7
+# Dependencies:
 Flask==0.12.2
+mpmath==1.0.0
+numpy==1.14.0
+sympy==1.1.1
+
+# Implicit dependencies,
+# (known working versions):
+click==6.7
 itsdangerous==0.24
-Jinja2==2.9.6
+Jinja2==2.10
 MarkupSafe==1.0
-mpmath==0.19
-numpy==1.13.0
-sympy==1.0
-Werkzeug==0.12.2
+virtualenv==15.1.0
+Werkzeug==0.14.1
