@@ -16,4 +16,4 @@ COPY . /usr/src/app
 
 RUN ln -sf /bin/bash /bin/sh
 
-CMD python -u server/server.py
+CMD python -u checker/server.py
