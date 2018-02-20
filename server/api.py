@@ -526,7 +526,8 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
 
         - 'test_str' should be the untrusted string for sympy to parse.
         - 'target_str' should be the trusted string to parse and match against.
-        - 'symbols' should be a comma separated list of symbols not to split.
+        - 'symbols' should be a string list or comma separated string of symbols
+           not to split during parsing.
         - 'check_symbols' indicates whether to verfiy the symbols used in each
           expression are exactly the same or not; setting this to False will
           allow symbols which cancel out to be included (probably don't want this
@@ -570,11 +571,16 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
     if ((u'±' in target_str) or (u'±' in test_str)):
         return plus_minus_checker(test_str, target_str, symbols=symbols, check_symbols=check_symbols)
 
-    # Prevent splitting of known symbols (symbols with underscores are left alone by default anyway)
+    # Prevent splitting of known symbols (symbols with underscores are left alone by default anyway):
     local_dict = {}
     if symbols is not None:
-        for s in symbols.split(","):
-            local_dict[s] = sympy.Symbol(s)
+        if isinstance(symbols, str) or isinstance(symbols, unicode):
+            symbols = symbols.split(",")
+        for s in symbols:
+            s = s.strip()
+            if parsing.is_valid_symbol(s):
+                # Only want symbols here, not functions or operators!
+                local_dict[s] = sympy.Symbol(s)
 
     print "[[PARSE EXPRESSIONS]]"
     # Parse the trusted target expression:

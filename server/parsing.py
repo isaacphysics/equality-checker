@@ -7,7 +7,7 @@ from sympy.core.numbers import Integer, Float, Rational
 from sympy.core.basic import Basic
 
 
-__all__ = ["UnsafeInputException", "cleanup_string", "parse_expr"]
+__all__ = ["UnsafeInputException", "cleanup_string", "is_valid_symbol", "parse_expr"]
 
 
 # What constitutes a relation?
@@ -30,6 +30,8 @@ ALLOWED_CHARACTER_LIST = ["\x20",            # space
 
 # Join these into a regular expression that matches everything except allowed characters:
 UNSAFE_CHARACTERS_REGEX = r"[^" + "".join(ALLOWED_CHARACTER_LIST) + r"]+"
+# Symbols may only contain 0-9, A-Z, a-z and underscores:
+NON_SYMBOL_REGEX = r"[^\x30-\x39\x41-\x5A\x61-\x7A\x5F]+"
 
 
 #####
@@ -71,6 +73,16 @@ def cleanup_string(string, reject_unsafe_input):
     string = string.replace(u"\u00BC", "(1/4)").replace(u"\u00BD", "(1/2)").replace(u"\u00BE", "(3/4)")
     string = string.replace(u"\u00D7", "*").replace(u"\u00F7", "/")
     return string
+
+
+def is_valid_symbol(string):
+    """Test whether a string can be a valid symbol.
+
+       Useful for filtering out functions and operators.
+    """
+    if re.search(NON_SYMBOL_REGEX, string) is not None:
+        return False
+    return True
 
 
 #####
