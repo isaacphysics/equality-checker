@@ -131,7 +131,12 @@ def check_endpoint():
 
 @app.route('/', methods=["GET"])
 def ping():
-    """Allow monitoring Flask status."""
+    """Allow monitoring Flask status.
+
+       This is for production monitoring of the application's status. Under no
+       circumstances should it be running in debug mode in production!"""
+    if app.debug:
+        abort(500)
     return jsonify(code=200)
 
 
