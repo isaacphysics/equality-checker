@@ -2,6 +2,7 @@
 
 import unittest
 import api
+import parsing
 
 EQUALITY_TYPES = ["exact", "symbolic", "numeric"]
 
@@ -12,6 +13,21 @@ class TestEqualityChecker(unittest.TestCase):
         print "\n\n\n" + " Test if Integers can be Equal ".center(75, "#")
         test_str = "1"
         target_str = "1"
+        symbols = None
+        response = api.check(test_str, target_str, symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "%s"!' % response["equal"])
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "%s"!' % response["equality_type"])
+        self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "%s"!' % response["equality_type"])
+        print "   PASS   ".center(75, "#")
+
+    def test_floats_equal(self):
+        print "\n\n\n" + " Test if Decimal Numbers can be Equal ".center(75, "#")
+        test_str = " .765625059"
+        target_str = "0.765625059"
         symbols = None
         response = api.check(test_str, target_str, symbols)
 
@@ -513,6 +529,28 @@ class TestEqualityChecker(unittest.TestCase):
         equal = api.numeric_equality(test_expr, target_expr)
 
         self.assertTrue(equal, "Expected expressions to be found numerically equal!")
+        print "   PASS   ".center(75, "#")
+
+
+#####
+# Ensure that cleanup_string()'s whitelist works:
+#####
+
+    def test_cleanup_string(self):
+        print "\n\n\n" + " Test cleanup_string(...) Function ".center(75, "#")
+        strings = ["().__class__.__bases__[0]", "().__class__", "(lambda:0).func_code", "__",
+                   "eval('()._' + '_class_' + '_._' + '_bases_' + '_[0]')",
+                   "5.a", u"\u2622 \U0001F4A9", "x = 5", "lambda x: 2*x", "[1, 2, 3]"]
+
+        for s in strings:
+            # These strings should not be left unmodified by cleanup_string:
+            clean_s = parsing.cleanup_string(s, False)
+            print "Unsafe input  : '%s'" % s
+            print "Cleaner input : '%s'" % clean_s
+            equal = (clean_s == s)
+            self.assertFalse(equal)
+            print " - - - "
+        print "Known unsafe strings sanitised slightly."
         print "   PASS   ".center(75, "#")
 
 
