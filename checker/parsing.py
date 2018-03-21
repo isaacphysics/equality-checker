@@ -64,7 +64,9 @@ def cleanup_string(string, reject_unsafe_input):
         # otherwise just swap the blacklisted characters for spaces and proceed.
         string = string.replace("?", " ")
     # Further cleanup, because some allowed characters are only allowed in certain circumstances:
-    string = re.sub(r'([^0-9])\.([^0-9])|(.?)\.([^0-9])|([^0-9])\.(.?)', '\g<1> \g<2>', string)  # Allow the . character only surrounded by numbers
+    string = re.sub(r'([^0-9])\.([^0-9])', '\g<1> \g<2>', string)  # Don't allow the . character between non-numbers
+    string = re.sub(r'(.?)\.([^0-9])', '\g<1> \g<2>', string)  # Don't allow the . character before a non-numeric character,
+    #                                                            but have to allow it after for cases like (.5) which are valid.
     string = string.replace("lambda", "lamda").replace("Lambda", "Lamda")  # We can't override the built-in keyword
     string = string.replace("__", " ")  # We don't need double underscores, exploits do
     string = re.sub(r'(?<![=<>])=(?![=<>])', '==', string)  # Replace all single equals signs with double equals
