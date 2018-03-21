@@ -265,8 +265,14 @@ def parse_expr(expression_str, transformations=_TRANSFORMS, local_dict=None, glo
        and uses a more aggresive set of transformations and better prevents any
        evaluation.
     """
+    if not isinstance(expression_str, (str, unicode)):
+        return None
+    elif expression_str == "" or len(expression_str) == 0:
+        return None
+
     if local_dict is None:
         local_dict = {}
+
     expression_str = re.sub(RELATIONS_REGEX, _replace_relations, expression_str)  # To ensure not evaluated, swap relations with Rel class
     code = sympy_parser.stringify_expr(expression_str, local_dict, global_dict, transformations)
     ef_code = _evaluateFalse(code)
