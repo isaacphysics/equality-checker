@@ -468,6 +468,18 @@ class TestEqualityChecker(unittest.TestCase):
         self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "%s"!' % response["equality_type"])
         print "   PASS   ".center(75, "#")
 
+    def test_custom_symbols_accepted(self):
+        print "\n\n\n" + " Test if Custom Symbols Work ".center(75, "#")
+        test_str = "test == abcd / d"
+        target_str = "test == abc"
+        symbols = "test, abcd, abc"
+        response = api.check(test_str, target_str, symbols, check_symbols=False)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "false", 'Expected "equal" to be "false", got "%s"!' % response["equal"])
+        print "   PASS   ".center(75, "#")
+
 
 #####
 # These tests are for specific parts of the main checking code and may more easily
