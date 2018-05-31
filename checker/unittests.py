@@ -545,7 +545,7 @@ class TestEqualityChecker(unittest.TestCase):
 
 
 #####
-# Ensure that cleanup_string()'s whitelist works:
+# Test parsing module functions:
 #####
 
     def test_cleanup_string(self):
@@ -563,6 +563,21 @@ class TestEqualityChecker(unittest.TestCase):
             self.assertFalse(equal)
             print " - - - "
         print "Known unsafe strings sanitised slightly."
+        print "   PASS   ".center(75, "#")
+
+    def test_is_valid_symbol(self):
+        print "\n\n\n" + " Test cleanup_string(...) Function ".center(75, "#")
+        valid_symbols = ["x", "DeltaX", "Phi", "Omega", "alpha"]
+        invalid_symbols = ["", "_trigs", "_logs", "sin()", "cos()", "_no_alphabet"]
+
+        test_valid_symbols = map(parsing.is_valid_symbol, valid_symbols)
+        print "Valid symbols parsed:   %s" % test_valid_symbols
+        test_invalid_symbols = map(parsing.is_valid_symbol, invalid_symbols)
+        print "Invalid symbols parsed: %s" % test_invalid_symbols
+
+        self.assertTrue(all(test_valid_symbols), "Expected all valid symbols to pass!")
+        self.assertFalse(any(test_invalid_symbols), "Expect all invalid symbols to fail!")
+        print "Known non-symbols skipped correctly!"
         print "   PASS   ".center(75, "#")
 
 

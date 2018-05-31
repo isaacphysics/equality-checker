@@ -80,9 +80,14 @@ def cleanup_string(string, reject_unsafe_input):
 def is_valid_symbol(string):
     """Test whether a string can be a valid symbol.
 
-       Useful for filtering out functions and operators.
+       Useful for filtering out functions and operators, and for blacklisting
+       metasymbols starting with an underscore.
     """
+    if len(string) == 0:
+        return False
     if re.search(NON_SYMBOL_REGEX, string) is not None:
+        return False
+    if string.startswith("_"):
         return False
     return True
 
