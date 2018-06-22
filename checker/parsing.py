@@ -206,7 +206,7 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
         # without their __new__() method raising a TypeError. There is probably
         # some underlying reason which we could take into account of.
         # For now, blacklist those known to be problematic:
-        _ignore_functions = ["Integer", "Float", "Symbol", "factorial", "sqrt", "Sqrt"]
+        _ignore_functions = ["Integer", "Float", "Symbol", "factorial", "sqrt", "Sqrt", "Tuple"]
         if node.func.id in _ignore_functions:
             # print "\tIgnoring function: %s" % node.func.id
             pass
@@ -232,6 +232,13 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
         else:
             # An unknown type of relation. Leave alone:
             return node
+
+    def visit_Tuple(self, node):
+        """Ensure all tuples use sympy classes."""
+        # As above, must ensure child nodes are visited:
+        self.generic_visit(node)
+        # Ensure all tuples are of a consistent type:
+        return ast.Call(func=ast.Name(id='Tuple', ctx=ast.Load()), args=node.elts, keywords=[])
 
 #####
 # Custom Parsers:
@@ -264,7 +271,8 @@ _GLOBAL_DICT = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy
                 "Exp": sympy.exp, "Log": sympy.log, "Ln": sympy.ln,
                 # "factorial": factorial,  "Factorial": factorial,
                 "sqrt": sympy.sqrt, "abs": sympy.Abs,
-                "Sqrt": sympy.sqrt, "Abs": sympy.Abs}
+                "Sqrt": sympy.sqrt, "Abs": sympy.Abs,
+                "Tuple": sympy.Tuple}
 
 
 def parse_expr(expression_str, transformations=_TRANSFORMS, local_dict=None, global_dict=_GLOBAL_DICT):
