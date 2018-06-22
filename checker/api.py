@@ -389,7 +389,7 @@ def expr_equality(test_expr, target_expr):
     if not equal:
         # Now is the best time to simplify any derivatives:
         # FIXME - IF FALSE: we don't want to do this right now!
-        if False and target_expr.has(sympy.Derivative) or test_expr.has(sympy.Derivative):
+        if False and (target_expr.has(sympy.Derivative) or test_expr.has(sympy.Derivative)):
             print "[SIMPLIFY DERIVATIVES]"
             target_expr = simplify_derivatives(target_expr)
             test_expr = simplify_derivatives(test_expr)
