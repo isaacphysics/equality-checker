@@ -93,7 +93,7 @@ def contains_incorrect_symbols(test_expr, target_expr):
     if test_expr.free_symbols != target_expr.free_symbols:
         print "Symbol mismatch between test and target!"
         result = dict()
-        missing = ",".join(map(str, (list(target_expr.free_symbols.difference(test_expr.free_symbols)))))
+        missing = ",".join(map(str, list(target_expr.free_symbols.difference(test_expr.free_symbols))))
         extra = ",".join(map(str, list(test_expr.free_symbols.difference(target_expr.free_symbols))))
         missing = missing.replace("lamda", "lambda").replace("Lamda", "Lambda")
         extra = extra.replace("lamda", "lambda").replace("Lamda", "Lambda")
