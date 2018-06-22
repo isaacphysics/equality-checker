@@ -11,7 +11,7 @@ __all__ = ["UnsafeInputException", "cleanup_string", "is_valid_symbol", "parse_e
 
 
 # What constitutes a relation?
-RELATIONS_REGEX = '(.*?)(==|<=|>=|<|>)(.*)'
+RELATIONS = {ast.Lt: "<", ast.LtE: "<=", ast.Gt: ">", ast.GtE: ">="}
 
 # We need to be able to sanitise Unicode user input. Whitelist allowed characters:
 ALLOWED_CHARACTER_LIST = ["\x20",            # space
@@ -102,6 +102,10 @@ class Equal(sympy.Equality):
         """Print the equation in a nice way!"""
         return "%s == %s" % (self.lhs, self.rhs)
 
+    def __repr__(self):
+        """Print the equation in a nice way!"""
+        return str(self)
+
 
 def factorial(n):
     """Stop sympy blindly calculating factorials no matter how large.
@@ -189,7 +193,11 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
        not support the "evaluate=False" argument. This isn't particularly nice or
        future proof!
     """
+
+    evaluate_false_keyword = ast.keyword(arg='evaluate', value=ast.Name(id='False', ctx=ast.Load()))
+
     def visit_Call(self, node):
+        """Ensure all function calls are 'evaluate=False'."""
         # Since we have overridden the visit method, we are now responsible for
         # ensuring all child nodes are visited too. This is done most simply by
         # calling generic_visit(...) on ourself:
@@ -204,10 +212,26 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
             pass
         else:
             # print "\tModifying function: %s" % node.func.id
-            node.keywords.append(ast.keyword(arg='evaluate', value=ast.Name(id='False', ctx=ast.Load())))
+            node.keywords.append(self.evaluate_false_keyword)
         # We must return the node, modified or not:
         return node
 
+    def visit_Compare(self, node):
+        """Ensure all comparisons use sympy classes with 'evaluate=False'."""
+        # Can't cope with comparing multiple inequalities:
+        if len(node.comparators) > 1:
+            raise TypeError("Cannot parse nested inequalities!")
+        # As above, must ensure child nodes are visited:
+        self.generic_visit(node)
+        # Use the custom Equals class if equality, otherwise swap with a know relation:
+        operator_class = node.ops[0].__class__
+        if isinstance(node.ops[0], ast.Eq):
+            return ast.Call(func=ast.Name(id='Eq', ctx=ast.Load()), args=[node.left, node.comparators[0]], keywords=[self.evaluate_false_keyword])
+        elif operator_class in RELATIONS:
+            return ast.Call(func=ast.Name(id='Rel', ctx=ast.Load()), args=[node.left, node.comparators[0], ast.Str(RELATIONS[operator_class])], keywords=[self.evaluate_false_keyword])
+        else:
+            # An unknown type of relation. Leave alone:
+            return node
 
 #####
 # Custom Parsers:
@@ -243,25 +267,6 @@ _GLOBAL_DICT = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy
                 "Sqrt": sympy.sqrt, "Abs": sympy.Abs}
 
 
-def _replace_relations(match_object):
-    """To ensure that relations like >, >= or == are not evaluated, swap them with Rel class.
-
-       Function to take in a regular expression match from RELATIONS_REGEX and
-       replace the string with an actual Relation class from sympy. This is required
-       to stop sympy from immediately evaluating all inequalities. It's recursive,
-       which should allow nested inequalities - but this functionality may be removed.
-        - 'match_object' should be a regex match object matching RELATIONS_REGEX.
-    """
-    lhs = match_object.group(1).strip()
-    relation = match_object.group(2)
-    rhs = match_object.group(3).strip()
-    if (relation == "=="):
-        # Override the default equality relation to use a custom (human-readable) one.
-        return "Eq(%s,%s)" % (lhs, rhs)
-    else:
-        return "Rel(%s,%s,'%s')" % (lhs, rhs, relation)
-
-
 def parse_expr(expression_str, transformations=_TRANSFORMS, local_dict=None, global_dict=_GLOBAL_DICT):
     """A clone of sympy.sympy_parser.parse_expr(...) which prevents all evaluation.
 
@@ -280,7 +285,6 @@ def parse_expr(expression_str, transformations=_TRANSFORMS, local_dict=None, glo
     if local_dict is None:
         local_dict = {}
 
-    expression_str = re.sub(RELATIONS_REGEX, _replace_relations, expression_str)  # To ensure not evaluated, swap relations with Rel class
     code = sympy_parser.stringify_expr(expression_str, local_dict, global_dict, transformations)
     ef_code = _evaluateFalse(code)
     code_compiled = compile(ef_code, '<string>', 'eval')
