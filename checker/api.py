@@ -276,8 +276,11 @@ def numeric_equality(test_expr, target_expr, complexify=False):
 
     # Replace any derivatives that exist with new dummy symbols, and treat them
     # as independent from the variables they involve. To avoid naming clashes,
-    # just name them in ascending numeric order.
-    for d, derivative in enumerate(target_expr.atoms(sympy.Derivative).union(test_expr.atoms(sympy.Derivative))):
+    # just name them in ascending numeric order by length of arguments.
+    # This ordering helps ensure something like d^2y/dx^2 gets substituted before
+    # the implicit inner dy/dx gets replaced and breaks things.
+    derivatives = target_expr.atoms(sympy.Derivative).union(test_expr.atoms(sympy.Derivative))
+    for d, derivative in enumerate(sorted(derivatives, key=lambda d: len(d.args), reverse=True)):
         derivative_symbol = sympy.Symbol("Derivative_%s" % d)
         print "Swapping '%s' into variable '%s' for numeric evaluation!" % (derivative, derivative_symbol)
         target_expr_n = target_expr_n.subs(derivative, derivative_symbol)
