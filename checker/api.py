@@ -28,6 +28,10 @@ NUMPY_MISSING_FN = {"csc": lambda x: 1/numpy.sin(x), "sec": lambda x: 1/numpy.co
 # evaluation and so the two effects cancel out. Neat!)
 NUMPY_COMPLEX_FN = {k: lambda x, f=NUMPY_MISSING_FN[k]: f(x + 0j) for k in NUMPY_MISSING_FN.keys()}
 
+# Whether to allow derivative simplification.
+# FIXME: this should be a parameter of the check(...) method.
+SIMPLIFY_DERIVATIVES = False
+
 
 class NumericRangeException(Exception):
     """An exception to be raised when numeric values are rejected."""
@@ -414,8 +418,7 @@ def expr_equality(test_expr, target_expr):
     equal = exact_match(test_expr, target_expr)
     if not equal:
         # Now is the best time to simplify any derivatives:
-        # FIXME - IF FALSE: we don't want to do this right now!
-        if False and (target_expr.has(sympy.Derivative) or test_expr.has(sympy.Derivative)):
+        if SIMPLIFY_DERIVATIVES and (target_expr.has(sympy.Derivative) or test_expr.has(sympy.Derivative)):
             print "[SIMPLIFY DERIVATIVES]"
             target_expr = simplify_derivatives(target_expr)
             test_expr = simplify_derivatives(test_expr)
