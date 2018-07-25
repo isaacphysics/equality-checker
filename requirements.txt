@@ -1,8 +1,8 @@
 # Dependencies:
 Flask==0.12.2
 mpmath==1.0.0
-numpy==1.14.0
-sympy==1.1.1
+numpy==1.15.0
+sympy==1.2
 
 # Implicit dependencies,
 # (known working versions):

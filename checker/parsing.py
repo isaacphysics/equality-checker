@@ -1,13 +1,14 @@
 import re
 import ast
+import tokenize
 import sympy
 import sympy.abc
-from sympy.parsing import sympy_parser, sympy_tokenize
+from sympy.parsing import sympy_parser
 from sympy.core.numbers import Integer, Float, Rational
 from sympy.core.basic import Basic
 
 
-__all__ = ["UnsafeInputException", "cleanup_string", "is_valid_symbol", "parse_expr"]
+__all__ = ["UnsafeInputException", "TokenError", "cleanup_string", "is_valid_symbol", "parse_expr"]
 
 
 # What constitutes a relation?
@@ -32,6 +33,8 @@ ALLOWED_CHARACTER_LIST = ["\x20",            # space
 UNSAFE_CHARACTERS_REGEX = r"[^" + "".join(ALLOWED_CHARACTER_LIST) + r"]+"
 # Symbols may only contain 0-9, A-Z, a-z and underscores:
 NON_SYMBOL_REGEX = r"[^\x30-\x39\x41-\x5A\x61-\x7A\x5F]+"
+
+TokenError = tokenize.TokenError
 
 
 #####
@@ -136,24 +139,24 @@ def _auto_symbol(tokens, local_dict, global_dict):
     # return the modified list of tokens:
     for tok in tokens:
         tokNum, tokVal = tok
-        if tokNum == sympy_tokenize.NAME:
+        if tokNum == tokenize.NAME:
             name = tokVal
             # Check if the token name is in the local/global dictionaries.
             # If it is, convert it correctly, otherwise leave untouched.
             if name in local_dict:
-                result.append((sympy_tokenize.NAME, name))
+                result.append((tokenize.NAME, name))
                 continue
             elif name in global_dict:
                 obj = global_dict[name]
                 if isinstance(obj, (Basic, type)) or callable(obj):
                     # If it's a function/basic class, don't convert it to a Symbol!
-                    result.append((sympy_tokenize.NAME, name))
+                    result.append((tokenize.NAME, name))
                     continue
             result.extend([
-                (sympy_tokenize.NAME, 'Symbol'),
-                (sympy_tokenize.OP, '('),
-                (sympy_tokenize.NAME, repr(str(name))),
-                (sympy_tokenize.OP, ')'),
+                (tokenize.NAME, 'Symbol'),
+                (tokenize.OP, '('),
+                (tokenize.NAME, repr(str(name))),
+                (tokenize.OP, ')'),
             ])
         else:
             result.append((tokNum, tokVal))
