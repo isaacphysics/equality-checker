@@ -66,7 +66,7 @@ def _make_json_error(ex):
     """
     status_code = ex.code if isinstance(ex, HTTPException) else 500
     response = jsonify(message=str(ex), code=status_code, error=type(ex).__name__)
-    response.status_code = (status_code)
+    response.status_code = status_code
     return response
 
 
@@ -82,13 +82,9 @@ def check_endpoint():
         print "=" * 50
         abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
 
-    target_str = body["target"]
-    test_str = body["test"]
-
-    if "description" in body:
-        description = str(body["description"])
-    else:
-        description = None
+    target_str = body.get("target")
+    test_str = body.get("test")
+    description = body.get("description")
 
     if (target_str == "") or (test_str == ""):
         print "=" * 50
@@ -100,15 +96,8 @@ def check_endpoint():
         print "=" * 50
         abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
 
-    if "symbols" in body:
-        symbols = str(body["symbols"])
-    else:
-        symbols = None
-
-    if "check_symbols" in body:
-        check_symbols = str(body["check_symbols"]).lower() == "true"
-    else:
-        check_symbols = True
+    symbols = body.get("symbols")
+    check_symbols = str(body.get("check_symbols", "true")).lower() == "true"
 
     # To reduce computation issues on single-threaded server, institute a timeout
     # for requests. If it takes longer than this to process, return an error.

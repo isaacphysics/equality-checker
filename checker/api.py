@@ -592,25 +592,24 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
     # Parse the untrusted test expression:
     test_expr = parse_expression(test_str, local_dict=local_dict)
 
+    result = dict(target=target_str, test=test_str)
+
     if target_expr is None:
         print "ERROR: TRUSTED EXPRESSION CANNOT BE PARSED!"
         if not _quiet:
             print "=" * 50
-        return dict(
-            target=target_str,
-            test=test_str,
-            error="Parsing TARGET Expression Failed!",
-            code=400  # Add a Bad Request status code because this is serious
-            )
+        result["error"] = "Parsing TARGET Expression Failed!"
+        result["code"] = 400  # This is fatal!
+        return result
     if test_expr is None:
         print "Incorrectly formatted ToCheck expression."
         if not _quiet:
             print "=" * 50
-        return dict(
-            target=target_str,
-            test=test_str,
-            error="Parsing Test Expression Failed.",
-            )
+        result["error"] = "Parsing Test Expression Failed!"
+        return result
+
+    result["parsedTarget"] = str(target_expr)
+    result["parsedTest"] = str(test_expr)
 
     # Now check for symbol match and equality:
     try:
@@ -621,15 +620,11 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
                 print "[[RESULT]]\nEquality: False"
                 if not _quiet:
                     print "=" * 50
-                return dict(
-                    target=target_str,
-                    test=test_str,
-                    parsedTarget=str(target_expr),
-                    parsedTest=str(test_expr),
-                    equal=str(False).lower(),
-                    equality_type="symbolic",
-                    incorrect_symbols=incorrect_symbols,
-                    )
+
+                result["equal"] = str(False).lower()
+                result["equality_type"] = "symbolic"
+                result["incorrect_symbols"] = incorrect_symbols
+                return result
         # Then check for equality proper:
         equal, equality_type = general_equality(test_expr, target_expr)
     except EquationTypeMismatch, e:
@@ -640,13 +635,9 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
         print "Error when comparing expressions: '%s'." % e
         if not _quiet:
             print "=" * 50
-        return dict(
-            target=target_str,
-            test=test_str,
-            parsedTarget=str(target_expr),
-            parsedTest=str(test_expr),
-            error="Comparison of expressions failed: '%s'" % e,
-            )
+        result["error"] = "Comparison of expressions failed: '%s'" % e
+        return result
+
     print "[[RESULT]]"
     if equal and (equality_type != "exact") and ((target_expr, test_expr) not in KNOWN_PAIRS):
         print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
@@ -654,11 +645,6 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
     print "Equality: %s" % equal
     if not _quiet:
         print "=" * 50
-    return dict(
-        target=target_str,
-        test=test_str,
-        parsedTarget=str(target_expr),
-        parsedTest=str(test_expr),
-        equal=str(equal).lower(),
-        equality_type=equality_type
-        )
+    result["equal"] = str(equal).lower()
+    result["equality_type"] = equality_type
+    return result
