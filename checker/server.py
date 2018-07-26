@@ -107,7 +107,7 @@ def check_endpoint():
         with TimeoutProtection(MAX_REQUEST_COMPUTATION_TIME):
             response_dict = api.check(test_str, target_str, symbols, check_symbols, description)
             return jsonify(**response_dict)
-    except TimeoutException, e:
+    except TimeoutException as e:
         print "ERROR: %s - Request took too long to process, aborting!" % type(e).__name__
         print "=" * 50
         error_dict = dict(

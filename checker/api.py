@@ -236,7 +236,7 @@ def symbolic_equality(test_expr, target_expr):
             return True
         else:
             return False
-    except NotImplementedError, e:
+    except NotImplementedError as e:
         print "%s: %s - Can't check symbolic equality!" % (type(e).__name__, e.message.capitalize())
         return False
 
@@ -627,11 +627,11 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
                 return result
         # Then check for equality proper:
         equal, equality_type = general_equality(test_expr, target_expr)
-    except EquationTypeMismatch, e:
+    except EquationTypeMismatch as e:
         print "Equation/Expression Type Mismatch: can't be equal!"
         equal = False
         equality_type = "symbolic"
-    except (SyntaxError, TypeError, AttributeError, NumericRangeException), e:
+    except (SyntaxError, TypeError, AttributeError, NumericRangeException) as e:
         print "Error when comparing expressions: '%s'." % e
         if not _quiet:
             print "=" * 50
