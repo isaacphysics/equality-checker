@@ -385,36 +385,13 @@ def expr_equality(test_expr, target_expr):
     """Given two sympy expressions: test for exact, symbolic and numeric equality.
 
        Check two sympy expressions for equality, throwing a TypeError if either
-       of the provided sympy objects is not an expression or a collections of
-       expressions in a vector represented by sympy.Tuple object.
+       of the provided sympy objects is not an expression.
         - 'test_expr' should be the untrusted sympy expression to check.
         - 'target_expr' should be the trusted sympy expression to match against.
     """
     if test_expr.is_Relational or target_expr.is_Relational:
         raise TypeError("Can't check nested equalities/inequalities!")
-
     equality_type = "exact"
-
-    # Dealing with a vector?
-    if isinstance(target_expr, sympy.Tuple) or isinstance(test_expr, sympy.Tuple):
-        print "[[VECTOR CHECK]]"
-        if not (isinstance(target_expr, sympy.Tuple) and isinstance(test_expr, sympy.Tuple)):
-            print "Type mismatch; cannot be equal!"
-            return False, equality_type
-        if len(target_expr) != len(test_expr):
-            print "Dimension mismatch; cannot be equal!"
-            return False, equality_type
-        components_equal = []
-        equality_types = []
-        for i in range(len(target_expr)):
-            print "[DIMENSION %d]" % i
-            equal_d, equality_type_d = expr_equality(test_expr[i], target_expr[i])
-            components_equal.append(equal_d)
-            equality_types.append(equality_type_d)
-            if not equal_d:
-                break
-        return all(components_equal), eq_type_order(equality_types)
-
     equal = exact_match(test_expr, target_expr)
     if not equal:
         # Now is the best time to simplify any derivatives:
