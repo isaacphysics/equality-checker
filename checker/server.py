@@ -140,10 +140,11 @@ def ping():
     return jsonify(code=200)
 
 
+# Make sure all outgoing error messages are in JSON format.
+# This will only work provided debug=False - otherwise the debugger hijacks them!
+for code in default_exceptions.iterkeys():
+    app.register_error_handler(code, _make_json_error)
+
 if __name__ == '__main__':
-    # Make sure all outgoing error messages are in JSON format.
-    # This will only work provided debug=False - otherwise the debugger hijacks them!
-    for code in default_exceptions.iterkeys():
-        app.register_error_handler(code, _make_json_error)
-    # Then run the app
+    # Run the app:
     app.run(port=5000, host="0.0.0.0", debug=False)

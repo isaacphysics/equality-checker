@@ -16,4 +16,5 @@ COPY . /usr/src/app
 
 RUN ln -sf /bin/bash /bin/sh
 
-CMD python -u checker/server.py
+WORKDIR /usr/src/app/checker
+CMD gunicorn --config=gunicorn.py server:app
