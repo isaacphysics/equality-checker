@@ -62,23 +62,16 @@ def known_equal_pair(test_expr, target_expr):
 def parse_expression(expression_str, local_dict=None):
     """Take a string containing a mathematical expression and return a sympy expression.
 
-       Use sympy's parse_expr(...) function to take the string and convert it to
-       a usable format. This presents risks with parsing builtin functions or mathods.
-       So apply some transforms to broaden what we can accept, use a dictionary to
-       override Python's global namespace, and a local dict of symbols not to split.
-        - 'expression_str' should be the string to parse.
-        - 'transforms' must be a tuple of sympy transformations.
+       Wrap the parsing class function parse_expr(...) and catch any exceptions
+       that occur.
         - 'local_dict' can be a dictionary of (name, sympy.Symbol(...)) pairs, where
           the string 'name' will not be split up and will be turned into the symbol
-          specified. It may be empty.
-        - 'global_dict' must be a dictionary mapping string function names to the
-          actual functions they will call when evaluated.
+          specified. It may be None.
     """
     try:
         return parsing.parse_expr(expression_str, local_dict=local_dict)
-    except (parsing.TokenError, SyntaxError, TypeError, AttributeError, NumericRangeException) as e:
+    except parsing.ParsingException:
         print "Incorrectly formatted expression."
-        print ("ERROR: %s - %s" % (type(e).__name__, e.message)).strip(":- ")
         print "Fail: '%s'." % expression_str
         return None
 

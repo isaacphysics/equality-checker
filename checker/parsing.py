@@ -8,7 +8,7 @@ from sympy.core.numbers import Integer, Float, Rational
 from sympy.core.basic import Basic
 
 
-__all__ = ["UnsafeInputException", "TokenError", "cleanup_string", "is_valid_symbol", "parse_expr"]
+__all__ = ["UnsafeInputException", "ParsingException", "cleanup_string", "is_valid_symbol", "parse_expr"]
 
 
 # What constitutes a relation?
@@ -34,12 +34,15 @@ UNSAFE_CHARACTERS_REGEX = r"[^" + "".join(ALLOWED_CHARACTER_LIST) + r"]+"
 # Symbols may only contain 0-9, A-Z, a-z and underscores:
 NON_SYMBOL_REGEX = r"[^\x30-\x39\x41-\x5A\x61-\x7A\x5F]+"
 
-TokenError = tokenize.TokenError
-
 
 #####
 # Parsing Cleanup
 #####
+
+class ParsingException(ValueError):
+    """An exception to be raised when parsing fails."""
+    pass
+
 
 class UnsafeInputException(ValueError):
     """An exception to be raised when unexpected input is provided."""
@@ -288,7 +291,11 @@ def parse_expr(expression_str, transformations=_TRANSFORMS, local_dict=None, glo
     if local_dict is None:
         local_dict = {}
 
-    code = sympy_parser.stringify_expr(expression_str, local_dict, global_dict, transformations)
-    ef_code = _evaluateFalse(code)
-    code_compiled = compile(ef_code, '<string>', 'eval')
-    return sympy_parser.eval_expr(code_compiled, local_dict, global_dict)
+    try:
+        code = sympy_parser.stringify_expr(expression_str, local_dict, global_dict, transformations)
+        ef_code = _evaluateFalse(code)
+        code_compiled = compile(ef_code, '<string>', 'eval')
+        return sympy_parser.eval_expr(code_compiled, local_dict, global_dict)
+    except (tokenize.TokenError, SyntaxError, TypeError, AttributeError) as e:
+        print ("ERROR: %s - %s" % (type(e).__name__, e.message)).strip(":- ")
+        raise ParsingException
