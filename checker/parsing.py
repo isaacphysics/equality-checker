@@ -362,8 +362,8 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
 # These constants are needed to address some security issues.
 # We don't want to use the default transformations, and we need to use a
 # whitelist of functions the parser should allow to match.
-_TRANSFORMS = (sympy.parsing.sympy_parser.auto_number, _auto_symbol,
-               sympy.parsing.sympy_parser.convert_xor, sympy_parser.split_symbols,
+_TRANSFORMS = (sympy_parser.auto_number, _auto_symbol,
+               sympy_parser.convert_xor, sympy_parser.split_symbols,
                sympy_parser.implicit_multiplication, sympy_parser.function_exponentiation)
 
 _GLOBAL_DICT = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy.Float, "Rational": sympy.Rational,
