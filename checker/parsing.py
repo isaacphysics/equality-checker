@@ -420,6 +420,6 @@ def parse_expr(expression_str, transformations=_TRANSFORMS, local_dict=None, glo
         ef_code = _evaluateFalse(code)
         code_compiled = compile(ef_code, '<string>', 'eval')
         return sympy_parser.eval_expr(code_compiled, local_dict, global_dict)
-    except (tokenize.TokenError, SyntaxError, TypeError, AttributeError) as e:
+    except (tokenize.TokenError, SyntaxError, TypeError, AttributeError, sympy.SympifyError) as e:
         print ("ERROR: %s - %s" % (type(e).__name__, e.message)).strip(":- ")
         raise ParsingException
