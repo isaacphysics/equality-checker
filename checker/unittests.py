@@ -664,6 +664,20 @@ class TestParsing(unittest.TestCase):
         print "Known non-symbols skipped correctly!"
         print "   PASS   ".center(75, "#")
 
+    def test_long_notation_ignored(self):
+        print "\n\n\n" + " Test Long Notation is Ignored ".center(75, "#")
+        from sympy import log
+        test_str = "2L + 2log(2)"
+
+        test_expr = api.parse_expression(test_str)
+        print "Test expression: '%s'" % test_expr
+
+        self.assertTrue(len(test_expr.free_symbols) > 0, "Expected '2L' to parse as '2*L' not '2'!")
+        print "Expression has symbols:   %s" % test_expr.free_symbols
+        self.assertTrue(test_expr.has(log), "Expected expression to contain a logarithm!")
+        print "Long integer notation ignored successfully!"
+        print "   PASS   ".center(75, "#")
+
 
 if __name__ == '__main__':
     unittest.main()

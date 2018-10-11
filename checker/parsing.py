@@ -409,6 +409,11 @@ def parse_expr(expression_str, transformations=_TRANSFORMS, local_dict=None, glo
     if local_dict is None:
         local_dict = {}
 
+    # FIXME: Avoid parsing issues with notation for Python longs.
+    # E.g. the string '2L' should not be interpreted as "two stored as a long".
+    # For now, just add a space to force desired behaviour:
+    expression_str = re.sub(r'([0-9])([lL])', '\g<1> \g<2>', expression_str)
+
     try:
         code = sympy_parser.stringify_expr(expression_str, local_dict, global_dict, transformations)
         ef_code = _evaluateFalse(code)
