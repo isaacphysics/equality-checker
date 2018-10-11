@@ -348,6 +348,12 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
             # An unknown type of relation. Leave alone:
             return node
 
+#    def visit(self, node):
+#        """Visit every node in the tree."""
+#        print ast.dump(node)
+#        self.generic_visit(node)
+#        return node
+
 #####
 # Custom Parsers:
 #####
