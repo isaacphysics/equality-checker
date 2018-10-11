@@ -223,6 +223,59 @@ def _auto_symbol(tokens, local_dict, global_dict):
     return result
 
 
+def _split_symbols_implicit_precedence(tokens, local_dict, global_dict):
+    """Replace the sympy builtin split_symbols with a version respecting implicit multiplcation.
+
+       By replacing this we can better cope with expressions like 1/xyz being
+       equivalent to 1/(x*y*z) rather than (y*z)/x as is the default. However it
+       cannot address issues like 1/2x becoming (1/2)*x rather than 1/(2*x), because
+       Python's tokeniser does not respect whitespace and so cannot distinguish
+       between '1/2 x' and '1/2x'.
+
+       This transformation is unlikely to be used, but is provided as proof of concept.
+    """
+    result = []
+    split = False
+    split_previous = False
+    for tok in tokens:
+        if split_previous:
+            # throw out closing parenthesis of Symbol that was split
+            split_previous = False
+            continue
+        split_previous = False
+        if tok[0] == tokenize.NAME and tok[1] == 'Symbol':
+            split = True
+        elif split and tok[0] == tokenize.NAME:
+            symbol = tok[1][1:-1]
+            if sympy_parser._token_splittable(symbol):
+                # If we're splitting this symbol, wrap it in brackets by adding
+                # them before the call to Symbol:
+                result = result[:-2] + [(tokenize.OP, '(')] + result[-2:]
+                for char in symbol:
+                    if char in local_dict or char in global_dict:
+                        # Get rid of the call to Symbol
+                        del result[-2:]
+                        result.extend([(tokenize.NAME, "%s" % char),
+                                       (tokenize.NAME, 'Symbol'), (tokenize.OP, '(')])
+                    else:
+                        result.extend([(tokenize.NAME, "'%s'" % char), (tokenize.OP, ')'),
+                                       (tokenize.NAME, 'Symbol'), (tokenize.OP, '(')])
+                # Delete the last two tokens: get rid of the extraneous
+                # Symbol( we just added
+                # Also, set split_previous=True so will skip
+                # the closing parenthesis of the original Symbol
+                del result[-2:]
+                split = False
+                split_previous = True
+                # Then close the extra brackets we added:
+                result.append((tokenize.OP, ')'))
+                continue
+            else:
+                split = False
+        result.append(tok)
+    return result
+
+
 #####
 # Customised SymPy Internals:
 #####
