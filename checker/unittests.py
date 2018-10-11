@@ -419,7 +419,6 @@ class TestDerivativeSupport(unittest.TestCase):
     def tearDown(self):
         # Ensure that we always set this back to False, even if tests fail!
         api.SIMPLIFY_DERIVATIVES = False
-        print "DONE"
 
     def test_derivatives(self):
         print "\n\n\n" + " Test if Derivatives Work ".center(75, "#")
