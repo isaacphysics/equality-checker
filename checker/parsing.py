@@ -113,6 +113,15 @@ class Equal(sympy.Equality):
         return str(self)
 
 
+def logarithm(argument, base=10, **kwargs):
+    """Enforce that the default base of logarithms is the more intuitive base 10.
+
+       SymPy does what many maths packages do, and defaults to the natural
+       logarithm for 'log'.
+    """
+    return sympy.log(argument, base, **kwargs)
+
+
 def factorial(n):
     """Stop sympy blindly calculating factorials no matter how large.
 
@@ -266,8 +275,8 @@ _GLOBAL_DICT = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy
                 "arccosec": sympy.acsc, "arcsec": sympy.asec, "arccot": sympy.acot,
                 "ArcCsc": sympy.acsc, "ArcSec": sympy.asec, "ArcCot": sympy.acot,
                 "cosech": sympy.csch, "sech": sympy.sech, "coth": sympy.coth,
-                "exp": sympy.exp, "log": sympy.log, "ln": sympy.ln,
-                "Exp": sympy.exp, "Log": sympy.log, "Ln": sympy.ln,
+                "exp": sympy.exp, "log": logarithm, "ln": sympy.ln,
+                "Exp": sympy.exp, "Log": logarithm, "Ln": sympy.ln,
                 # "factorial": factorial,  "Factorial": factorial,
                 "sqrt": sympy.sqrt, "abs": sympy.Abs,
                 "Sqrt": sympy.sqrt, "Abs": sympy.Abs}
