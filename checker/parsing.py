@@ -1,6 +1,7 @@
 import re
 import ast
 import tokenize
+import unicodedata
 import sympy
 import sympy.abc
 from sympy.parsing import sympy_parser
@@ -14,7 +15,12 @@ __all__ = ["UnsafeInputException", "ParsingException", "cleanup_string", "is_val
 # What constitutes a relation?
 RELATIONS = {ast.Lt: "<", ast.LtE: "<=", ast.Gt: ">", ast.GtE: ">="}
 
-# We need to be able to sanitise Unicode user input. Whitelist allowed characters:
+# Unicode number and fraction name information:
+NUMBERS = {"ZERO": 0, "ONE": 1, "TWO": 2, "THREE": 3, "FOUR": 4, "FIVE": 5, "SIX": 6, "SEVEN": 7, "EIGHT": 8, "NINE": 9}
+FRACTIONS = {"HALF": 2, "THIRD": 3, "QUARTER": 4, "FIFTH": 5, "SIXTH": 6, "SEVENTH": 7, "EIGHTH": 8, "NINTH": 9, "TENTH": 10}
+FRACTIONS.update({"{}S".format(key): value for key, value in FRACTIONS.iteritems() if key != "HALF"})
+
+# We need to be able to sanitise user input. Whitelist allowed characters:
 ALLOWED_CHARACTER_LIST = ["\x20",            # space
                           "\x28-\x29",       # left and right brackets
                           "\x2A-\x2F",       # times, plus, comma, minus, decimal point, divide
@@ -23,14 +29,12 @@ ALLOWED_CHARACTER_LIST = ["\x20",            # space
                           "\x41-\x5A",       # uppercase letters A-Z
                           "\x5E-\x5F",       # caret symbol, underscore
                           "\x61-\x7A",       # lowercase letters a-z
-                          u"\u00B1",         # plus or minus symbol
-                          u"\u00B2-\u00B3",  # squared and cubed notation
-                          u"\u00BC-\u00BE",  # quarter, half, three quarters
-                          u"\u00D7",         # unicode times sign
-                          u"\u00F7"]         # unicode division sign
+                          u"\u00B1"]         # plus or minus symbol
 
 # Join these into a regular expression that matches everything except allowed characters:
 UNSAFE_CHARACTERS_REGEX = r"[^" + "".join(ALLOWED_CHARACTER_LIST) + r"]+"
+# Match all non-ASCII characters:
+NON_ASCII_CHAR_REGEX = r"[^\x00-\x7F]+"
 # Symbols may only contain 0-9, A-Z, a-z and underscores:
 NON_SYMBOL_REGEX = r"[^\x30-\x39\x41-\x5A\x61-\x7A\x5F]+"
 
@@ -49,6 +53,51 @@ class UnsafeInputException(ValueError):
     pass
 
 
+def process_unicode_chars(match_object):
+    """Clean a string of Unicode characters into Python maths characters if possible."""
+    result = ""
+    prev_name = None
+    for char in match_object.group(0):
+        name = unicodedata.name(char, None)
+
+        if name is None:
+            result += char
+        elif name.startswith("SUPERSCRIPT") and name.split()[1] in NUMBERS:
+            number = name.split()[1]
+            # Check if this is a continuation of a exponent, or a new one.
+            if prev_name is not None and prev_name.startswith("SUPERSCRIPT"):
+                result += "{0:d}".format(NUMBERS[number])
+            else:
+                result += "**{0:d}".format(NUMBERS[number])
+        elif name.startswith("SUBSCRIPT") and name.split()[1] in NUMBERS:
+            number = name.split()[1]
+            # Check if this is a continuation of a subscript, or a new one.
+            if prev_name is not None and prev_name.startswith("SUBSCRIPT"):
+                result += "{0:d}".format(NUMBERS[number])
+            else:
+                result += "_{0:d}".format(NUMBERS[number])
+        elif name.startswith("VULGAR FRACTION"):
+            numerator_name = name.split()[2]
+            denominator_name = name.split()[3]
+            if numerator_name in NUMBERS and denominator_name in FRACTIONS:
+                result += "({0:d}/{1:d})".format(NUMBERS[numerator_name], FRACTIONS[denominator_name])
+            else:
+                result += char
+        elif name in ["MULTIPLICATION SIGN", "ASTERISK OPERATOR"]:
+            result += "*"
+        elif name in ["DIVISION SIGN", "DIVISION SLASH"]:
+            result += "/"
+        elif name in ["LESS-THAN OR EQUAL TO", "LESS-THAN OR SLANTED EQUAL TO"]:
+            result += "<="
+        elif name in ["GREATER-THAN OR EQUAL TO", "GREATER-THAN OR SLANTED EQUAL TO"]:
+            result += ">="
+        else:
+            result += char
+
+        prev_name = name
+    return result
+
+
 def cleanup_string(string, reject_unsafe_input):
     """Some simple sanity checking and cleanup to perform on passed in strings.
 
@@ -58,6 +107,8 @@ def cleanup_string(string, reject_unsafe_input):
     # Flask gives us unicode objects anyway, the command line might not!
     if not isinstance(string, unicode):
         string = unicode(string.decode('utf-8'))  # We'll hope it's UTF-8
+    # Swap any known safe Unicode characters with their ASCII equivalents:
+    string = re.sub(NON_ASCII_CHAR_REGEX, process_unicode_chars, string)
     # Replace all non-whitelisted characters in the input:
     string = re.sub(UNSAFE_CHARACTERS_REGEX, '?', string)
     if reject_unsafe_input:
@@ -76,10 +127,6 @@ def cleanup_string(string, reject_unsafe_input):
     string = string.replace("lambda", "lamda").replace("Lambda", "Lamda")  # We can't override the built-in keyword
     string = string.replace("__", " ")  # We don't need double underscores, exploits do
     string = re.sub(r'(?<![=<>])=(?![=<>])', '==', string)  # Replace all single equals signs with double equals
-    # Replace Unicode equivalents:
-    string = string.replace(u"\u00B2", "**2").replace(u"\u00B3", "**3")
-    string = string.replace(u"\u00BC", "(1/4)").replace(u"\u00BD", "(1/2)").replace(u"\u00BE", "(3/4)")
-    string = string.replace(u"\u00D7", "*").replace(u"\u00F7", "/")
     return string
 
 
