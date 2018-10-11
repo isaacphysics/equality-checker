@@ -112,7 +112,7 @@ def cleanup_string(string, reject_unsafe_input):
     # Replace all non-whitelisted characters in the input:
     string = re.sub(UNSAFE_CHARACTERS_REGEX, '?', string)
     if reject_unsafe_input:
-        # If we have non-whitelisted charcaters, raise an exception:
+        # If we have non-whitelisted characters, raise an exception:
         if "?" in string:
             # We replaced all non-whitelisted characters with '?' (and '?' is not whitelisted)
             # so if any '?' characters exist the string must have contained bad input.
@@ -192,7 +192,8 @@ def _auto_symbol(tokens, local_dict, global_dict):
 
        We have to replace this, because SymPy attempts to be too accepting of
        what it considers to be valid input and allows Pythonic behaviour.
-       We only really want pure mathematics notations where possible!"""
+       We only really want pure mathematics notations where possible!
+    """
     result = []
     # As with all tranformations, we have to iterate through the tokens and
     # return the modified list of tokens:
