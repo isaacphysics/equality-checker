@@ -23,8 +23,8 @@ which will get a response like:
 {
     "equal": "true",
     "equality_type": "exact",
-    "parsedTarget": "x + 3",
-    "parsedTest": "x + 3",
+    "parsed_target": "x + 3",
+    "parsed_test": "x + 3",
     "target": "x + 3",
     "test": "3 + x"
 }

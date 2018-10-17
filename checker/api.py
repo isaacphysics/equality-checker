@@ -513,8 +513,8 @@ def plus_minus_checker(test_str, target_str, symbols=None, check_symbols=True):
     return dict(
                 target=target_str,
                 test=test_str,
-                parsedTarget=plus["parsedTarget"],
-                parsedTest=plus["parsedTest"],
+                parsed_target=plus["parsed_target"],
+                parsed_test=plus["parsed_test"],
                 equal=str(equal).lower(),
                 equality_type=equality_type,
             )
@@ -608,8 +608,8 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
         result["error"] = "Parsing Test Expression Failed!"
         return result
 
-    result["parsedTarget"] = str(target_expr)
-    result["parsedTest"] = str(test_expr)
+    result["parsed_target"] = str(target_expr)
+    result["parsed_test"] = str(test_expr)
 
     # Now check for symbol match and equality:
     try:
