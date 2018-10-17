@@ -558,15 +558,20 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
         return dict(error="Empty string as argument.")
 
     # Cleanup the strings before anything is done to them:
+    error_is_test = False
     try:
         target_str = parsing.cleanup_string(target_str, reject_unsafe_input=True)
+        error_is_test = True
         test_str = parsing.cleanup_string(test_str, reject_unsafe_input=True)
     except parsing.UnsafeInputException:
         print "ERROR: Input contained non-whitelisted characters!"
-        print "Test string: '%s'" % test_str
+        result = dict(error="Bad input provided!")
+        if error_is_test:
+            print "Test string: '%s'" % test_str
+            result["syntax_error"] = str(True).lower()
         if not _quiet:
             print "=" * 50
-        return dict(error="Bad input provided!")
+        return result
 
     print "Target string: '%s'" % target_str
     print "Test string: '%s'" % test_str
@@ -606,6 +611,7 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
         if not _quiet:
             print "=" * 50
         result["error"] = "Parsing Test Expression Failed!"
+        result["syntax_error"] = str(True).lower()
         return result
 
     result["parsed_target"] = str(target_expr)

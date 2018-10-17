@@ -550,6 +550,19 @@ class TestOthers(unittest.TestCase):
         self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "%s"!' % response["equality_type"])
         print "   PASS   ".center(75, "#")
 
+    def test_syntax_error(self):
+        print "\n\n\n" + " Test if Syntax Errors are Reported ".center(75, "#")
+        test_str = "(a + b +"
+        target_str = "a + b"
+        symbols = None
+        response = api.check(test_str, target_str, symbols)
+
+        self.assertTrue("error" in response, 'Expected "error" in response!')
+        self.assertTrue("syntax_error" in response, 'Key "syntax_error" not in response!')
+        print response["syntax_error"], type(response["syntax_error"])
+        self.assertTrue(response["syntax_error"] == "true", 'Expected "syntax_error" to be "true", got "%s"!' % response["syntax_error"])
+        print "   PASS   ".center(75, "#")
+
 #    def test_factorials_limited(self):
 #        print "\n\n\n" + " Test Factorials are correctly Limited ".center(75, "#")
 #        test_str = "factorial(1000)"
