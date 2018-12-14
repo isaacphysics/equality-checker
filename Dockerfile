@@ -1,4 +1,4 @@
-FROM python:2.7
+FROM python:3.7
 
 # To allow the Unicode +- sign to be printed, set IO encoding:
 ENV PYTHONIOENCODING UTF-8

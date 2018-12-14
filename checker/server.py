@@ -50,7 +50,7 @@ class TimeoutProtection(object):
             signal.alarm(self.duration)
         else:
             # We can't use SIGALRM
-            print "WARN: Timeout Unsupported!"
+            print("WARN: Timeout Unsupported!")
 
     def __exit__(self, _type, value, traceback):
         """Cancels alarm after 'with' block exits."""
@@ -76,10 +76,10 @@ def check_endpoint():
     body = request.get_json(force=True)
 
     if not (("test" in body) and ("target" in body)):
-        print "=" * 50
-        print "ERROR: Ill-formed request!"
-        print body
-        print "=" * 50
+        print("=" * 50)
+        print("ERROR: Ill-formed request!")
+        print(body)
+        print("=" * 50)
         abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
 
     target_str = body.get("target")
@@ -87,13 +87,13 @@ def check_endpoint():
     description = body.get("description")
 
     if (target_str == "") or (test_str == ""):
-        print "=" * 50
+        print("=" * 50)
         if description is not None:
-            print description
-            print "=" * 50
-        print "ERROR: Empty string in request!"
-        print "Target: '%s'\nTest: '%s'" % (target_str, test_str)
-        print "=" * 50
+            print(description)
+            print("=" * 50)
+        print("ERROR: Empty string in request!")
+        print("Target: '{0}'\nTest: '{1}'".format(target_str, test_str))
+        print("=" * 50)
         abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
 
     symbols = body.get("symbols")
@@ -108,8 +108,8 @@ def check_endpoint():
             response_dict = api.check(test_str, target_str, symbols, check_symbols, description)
             return jsonify(**response_dict)
     except TimeoutException as e:
-        print "ERROR: %s - Request took too long to process, aborting!" % type(e).__name__
-        print "=" * 50
+        print("ERROR: {} - Request took too long to process, aborting!".format(type(e).__name__))
+        print("=" * 50)
         error_dict = dict(
             target=target_str,
             test=test_str,
@@ -131,7 +131,7 @@ def ping():
 
 # Make sure all outgoing error messages are in JSON format.
 # This will only work provided debug=False - otherwise the debugger hijacks them!
-for code in default_exceptions.iterkeys():
+for code in default_exceptions.keys():
     app.register_error_handler(code, _make_json_error)
 
 if __name__ == '__main__':

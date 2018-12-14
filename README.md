@@ -1,9 +1,11 @@
 # equality-checker
 A not-quite-so-tiny-any-more server for testing the equivalence of two algebraic expressions using [SymPy](http://www.sympy.org/en/index.html).
 
+This project now uses Python 3. The last version using Python 2.7 was [v0.8.0](https://github.com/ucam-cl-dtg/equality-checker/releases/tag/v0.8.0).
+
 ### Development Setup Instructions
 #### Simple Setup
-1. Install [Python 2.7](https://www.python.org/)
+1. Install [Python 3.7](https://www.python.org/)
 2. Clone this repository
 3. Run `pip install -r requirements.txt`
 4. Run `python server\api.py`

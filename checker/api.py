@@ -26,7 +26,7 @@ NUMPY_MISSING_FN = {"csc": lambda x: 1/numpy.sin(x), "sec": lambda x: 1/numpy.co
 # (Late Binding means that can't just use NUMPY_MISSING_FN[k] since this isn't evaluated in
 # the for loop properly. But adding it as a default argument to the lambda *does* cause the
 # evaluation and so the two effects cancel out. Neat!)
-NUMPY_COMPLEX_FN = {k: lambda x, f=NUMPY_MISSING_FN[k]: f(x + 0j) for k in NUMPY_MISSING_FN.keys()}
+NUMPY_COMPLEX_FN = {k: lambda x, f=NUMPY_MISSING_FN[k]: f(x + 0j) for k in list(NUMPY_MISSING_FN.keys())}
 
 # Whether to allow derivative simplification.
 # FIXME: this should be a parameter of the check(...) method.
@@ -50,10 +50,10 @@ def known_equal_pair(test_expr, target_expr):
        should reduce calls to 'simplify' and the numeric testing, both of which
        are computationally costly and slow.
     """
-    print "[[KNOWN PAIR CHECK]]"
+    print("[[KNOWN PAIR CHECK]]")
     pair = (target_expr, test_expr)
     if pair in KNOWN_PAIRS:
-        print "Known Pair from %s equality!" % KNOWN_PAIRS[pair]
+        print("Known Pair from {} equality!".format(KNOWN_PAIRS[pair]))
         return (True, KNOWN_PAIRS[pair])
     else:
         return (False, "known")
@@ -71,8 +71,8 @@ def parse_expression(expression_str, local_dict=None):
     try:
         return parsing.parse_expr(expression_str, local_dict=local_dict)
     except parsing.ParsingException:
-        print "Incorrectly formatted expression."
-        print "Fail: '%s'." % expression_str
+        print("Incorrectly formatted expression.")
+        print("Fail: '{}'.".format(expression_str))
         return None
 
 
@@ -86,21 +86,21 @@ def contains_incorrect_symbols(test_expr, target_expr):
         - 'test_expr' should be the untrusted sympy expression to check symbols from.
         - 'target_expr' should be the trusted sympy expression to match symbols to.
     """
-    print "[[SYMBOL CHECK]]"
+    print("[[SYMBOL CHECK]]")
     if test_expr.free_symbols != target_expr.free_symbols:
-        print "Symbol mismatch between test and target!"
+        print("Symbol mismatch between test and target!")
         result = dict()
         missing = ",".join(map(str, list(target_expr.free_symbols.difference(test_expr.free_symbols))))
         extra = ",".join(map(str, list(test_expr.free_symbols.difference(target_expr.free_symbols))))
         missing = missing.replace("lamda", "lambda").replace("Lamda", "Lambda")
         extra = extra.replace("lamda", "lambda").replace("Lamda", "Lambda")
         if len(missing) > 0:
-            print "Test Expression missing: %s" % missing
+            print("Test Expression missing: {}".format(missing))
             result["missing"] = missing
         if len(extra) > 0:
-            print "Test Expression has extra: %s" % extra
+            print("Test Expression has extra: {}".format(extra))
             result["extra"] = extra
-        print "Not Equal: Enforcing strict symbol match for correctness!"
+        print("Not Equal: Enforcing strict symbol match for correctness!")
         return result
     else:
         return None
@@ -119,7 +119,7 @@ def eq_type_order(eq_types):
     elif "exact" in eq_types:
         return "exact"
     else:
-        raise TypeError("Unexpected list of equality types: %s" % eq_types)
+        raise TypeError("Unexpected list of equality types: {}".format(eq_types))
 
 
 def simplify_derivative(derivative):
@@ -157,7 +157,7 @@ def simplify_derivative(derivative):
     d = d.subs(reverse)
     # Then for logging print the simplification:
     if derivative != d:
-        print "Simplified '%s' to '%s'!" % (derivative, d)
+        print("Simplified '{0}' to '{1}'!".format(derivative, d))
     return d
 
 
@@ -193,14 +193,14 @@ def exact_match(test_expr, target_expr):
         - 'test_expr' should be the untrusted sympy expression to check.
         - 'target_expr' should be the trusted sympy expression to match against.
     """
-    print "[EXACT TEST]"
+    print("[EXACT TEST]")
     if test_expr == target_expr:
-        print "Exact Match (with '==')"
+        print("Exact Match (with '==')")
         return True
     elif sympy.srepr(test_expr) == sympy.srepr(target_expr):
         # This is a (perfectly acceptable) hack for ordering the atoms of each
         # term, but a more explicit method may be preferable in the future.
-        print "Exact Match (with 'srepr')"
+        print("Exact Match (with 'srepr')")
         return True
     else:
         return False
@@ -223,21 +223,21 @@ def symbolic_equality(test_expr, target_expr):
         - 'test_expr' should be the untrusted sympy expression to check.
         - 'target_expr' should be the trusted sympy expression to match against.
     """
-    print "[SYMBOLIC TEST]"
+    print("[SYMBOLIC TEST]")
     # Here we make the assumption that all variables are real and positive to
     # aid the simplification process. Since we do this for numeric checking anyway,
     # it doesn't seem like much of an issue. Removing 'sympy.posify()' below will
     # stop this.
     try:
         if sympy.simplify(sympy.posify(test_expr - target_expr)[0]) == 0:
-            print "Symbolic match."
-            print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
+            print("Symbolic match.")
+            print("INFO: Adding known pair ({0}, {1})".format(target_expr, test_expr))
             KNOWN_PAIRS[(target_expr, test_expr)] = "symbolic"
             return True
         else:
             return False
     except NotImplementedError as e:
-        print "%s: %s - Can't check symbolic equality!" % (type(e).__name__, e.message.capitalize())
+        print("{0}: {1} - Can't check symbolic equality!".format(type(e).__name__, e.message.capitalize()))
         return False
 
 
@@ -260,7 +260,7 @@ def numeric_equality(test_expr, target_expr, complexify=False):
         - 'complexify' is a boolean flag for sampling in the complex plane rather
           than just over the reals.
     """
-    print "[NUMERIC TEST]" if not complexify else "[NUMERIC TEST (COMPLEX)]"
+    print("[NUMERIC TEST]" if not complexify else "[NUMERIC TEST (COMPLEX)]")
     SAMPLE_POINTS = 25
     lambdify_modules = [NUMPY_MISSING_FN, "numpy"]
 
@@ -278,8 +278,8 @@ def numeric_equality(test_expr, target_expr, complexify=False):
     # the implicit inner dy/dx gets replaced and breaks things.
     derivatives = target_expr.atoms(sympy.Derivative).union(test_expr.atoms(sympy.Derivative))
     for d, derivative in enumerate(sorted(derivatives, key=lambda d: len(d.args), reverse=True)):
-        derivative_symbol = sympy.Symbol("Derivative_%s" % d)
-        print "Swapping '%s' into variable '%s' for numeric evaluation!" % (derivative, derivative_symbol)
+        derivative_symbol = sympy.Symbol("Derivative_{}".format(d))
+        print("Swapping '{0}' into variable '{1}' for numeric evaluation!".format(derivative, derivative_symbol))
         target_expr_n = target_expr_n.subs(derivative, derivative_symbol)
         test_expr_n = test_expr_n.subs(derivative, derivative_symbol)
 
@@ -287,7 +287,7 @@ def numeric_equality(test_expr, target_expr, complexify=False):
     # This introduces an asymmetry; target is trusted to only contain necessary symbols,
     # but test is not.
     if len(target_expr_n.free_symbols.difference(test_expr_n.free_symbols)) > 0:
-        print "Test expression doesn't contain all target expression variables! Can't be numerically tested."
+        print("Test expression doesn't contain all target expression variables! Can't be numerically tested.")
         return False
 
     # Evaluate over a domain, but if the test domain is larger; add in extra dimensions
@@ -329,10 +329,10 @@ def numeric_equality(test_expr, target_expr, complexify=False):
 
     # Output the function values at the sample points for debugging?
     # The actual domain arrays are probably too long to be worth ever printing.
-    print "Target function value(s):"
-    print eval_f_target
-    print "Test function value(s):"
-    print eval_f_test
+    print("Target function value(s):")
+    print(eval_f_target)
+    print("Test function value(s):")
+    print(eval_f_test)
 
     # Can we safely cast the values to 64 bit floats (2 x 64 bits for complex values)?
     # Real values that can be safely cast to 'float64' can always be cast to 'complex128'
@@ -345,7 +345,7 @@ def numeric_equality(test_expr, target_expr, complexify=False):
     if numpy.any(numpy.isnan(eval_f_target)) or numpy.any(numpy.isnan(eval_f_test)):
         # If have not tried using complex numbers, try using those:
         if not complexify:
-            print "A function appears to be undefined in the interval [0,1). Trying again with complex values!"
+            print("A function appears to be undefined in the interval [0,1). Trying again with complex values!")
             return numeric_equality(test_expr, target_expr, complexify=True)
         else:
             # If have tried using complex numbers, can't evaluate and have gone badly wrong:
@@ -365,9 +365,9 @@ def numeric_equality(test_expr, target_expr, complexify=False):
     # the largest value in the target function; the two things are probably equal!
     # This will cope perfectly with complex numbers too!
     diff = numpy.sum(numpy.abs(eval_f_target - eval_f_test))
-    print "Numeric Equality Tested: absolute difference of %.6E" % diff
+    print("Numeric Equality Tested: absolute difference of {:.6E}".format(diff))
     if diff <= (1E-10 * numpy.max(numpy.abs(eval_f_target))):
-        print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
+        print("INFO: Adding known pair ({0}, {1})".format(target_expr, test_expr))
         KNOWN_PAIRS[(target_expr, test_expr)] = "numeric"
         return True
     else:
@@ -389,7 +389,7 @@ def expr_equality(test_expr, target_expr):
     if not equal:
         # Now is the best time to simplify any derivatives:
         if SIMPLIFY_DERIVATIVES and (target_expr.has(sympy.Derivative) or test_expr.has(sympy.Derivative)):
-            print "[SIMPLIFY DERIVATIVES]"
+            print("[SIMPLIFY DERIVATIVES]")
             target_expr = simplify_derivatives(target_expr)
             test_expr = simplify_derivatives(test_expr)
         # Then try checking for symbolic equality:
@@ -413,44 +413,44 @@ def general_equality(test_expr, target_expr):
         return equal, equality_type
     # Dealing with an equation?
     if target_expr.is_Equality:
-        print "[[EQUATION CHECK]]"
+        print("[[EQUATION CHECK]]")
         if not test_expr.is_Equality:
             raise EquationTypeMismatch("Expected an equation!")
-        print "[LHS == LHS]"
+        print("[LHS == LHS]")
         equal_lhs, equality_type_lhs = expr_equality(test_expr.lhs, target_expr.lhs)
-        print "[RHS == RHS]"
+        print("[RHS == RHS]")
         equal_rhs, equality_type_rhs = expr_equality(test_expr.rhs, target_expr.rhs)
         equal = equal_lhs and equal_rhs
         equality_type = eq_type_order([equality_type_lhs, equality_type_rhs])
         if not equal:
-            print "[CROSS SIDE CHECK]"
-            print "[LHS == RHS]"
+            print("[CROSS SIDE CHECK]")
+            print("[LHS == RHS]")
             equal_lhs, equality_type_lhs = expr_equality(test_expr.rhs, target_expr.lhs)
-            print "[RHS == LHS]"
+            print("[RHS == LHS]")
             equal_rhs, equality_type_rhs = expr_equality(test_expr.lhs, target_expr.rhs)
             equal = equal_lhs and equal_rhs
             equality_type = eq_type_order([equality_type_lhs, equality_type_rhs])
         return equal, equality_type
     # Dealing with an inequality?
     elif target_expr.is_Relational:
-        print "[[INEQUALITY CHECK]]"
+        print("[[INEQUALITY CHECK]]")
         if not test_expr.is_Relational:
             raise EquationTypeMismatch("Expected an inequality!")
-        print "[LTS == LTS]"
+        print("[LTS == LTS]")
         equal_lts, equality_type_lts = expr_equality(test_expr.lts, target_expr.lts)
-        print "[GTS == GTS]"
+        print("[GTS == GTS]")
         equal_gts, equality_type_gts = expr_equality(test_expr.gts, target_expr.gts)
         # Ensure that if one is strict inequlity, they both are. Or if one isn't, the other isn't.
         equal_rel = not (("Strict" in target_expr.func.__name__) != ("Strict" in test_expr.func.__name__))  # NOT XOR
-        print "[INEQUALITY TYPE CHECK]"
+        print("[INEQUALITY TYPE CHECK]")
         if not equal_rel:
-            print "Strict vs Non-Strict Inequality Mismatch!"
+            print("Strict vs Non-Strict Inequality Mismatch!")
         equal = equal_lts and equal_gts and equal_rel
         equality_type = eq_type_order([equality_type_lts, equality_type_gts])
         return equal, equality_type
     # Else assume an expression:
     else:
-        print "[[EXPRESSION CHECK]]"
+        print("[[EXPRESSION CHECK]]")
         if test_expr.is_Equality or test_expr.is_Relational:
             raise EquationTypeMismatch("Expected an expression!")
         return expr_equality(test_expr, target_expr)
@@ -472,43 +472,43 @@ def plus_minus_checker(test_str, target_str, symbols=None, check_symbols=True):
           allow symbols which cancel out to be included (probably don't want this
           in questions).
     """
-    print "[[PLUS-OR-MINUS CHECKING]]"
-    if not ((u'±' in target_str) and (u'±' in test_str)):
-        print "Plus-or-Minus mismatch between test and target! Can't be equal!"
-        print "[[OVERALL RESULT]]"
-        print "Equality: False"
-        print "=" * 50
+    print("[[PLUS-OR-MINUS CHECKING]]")
+    if not (('±' in target_str) and ('±' in test_str)):
+        print("Plus-or-Minus mismatch between test and target! Can't be equal!")
+        print("[[OVERALL RESULT]]")
+        print("Equality: False")
+        print("=" * 50)
         return dict(
             target=target_str,
             test=test_str,
             equal=str(False).lower(),
             equality_type="symbolic",
             )
-    print "[[Multi-Valued: Case Using +ve Value]]"
-    plus = check(test_str.replace(u'±', '+'), target_str.replace(u'±', '+'),
+    print("[[Multi-Valued: Case Using +ve Value]]")
+    plus = check(test_str.replace('±', '+'), target_str.replace('±', '+'),
                  symbols=symbols, check_symbols=check_symbols, _quiet=True)
     if "error" in plus:
         # The dictionary is mostly correct, but the target and test strings are wrong:
         plus["target"] = target_str
         plus["test"] = test_str
         plus["case"] = "+"
-        print "=" * 50
+        print("=" * 50)
         return plus
-    print "[[Multi-Valued: Case Using -ve Value]]"
-    minus = check(test_str.replace(u'±', '-'), target_str.replace(u'±', '-'),
+    print("[[Multi-Valued: Case Using -ve Value]]")
+    minus = check(test_str.replace('±', '-'), target_str.replace('±', '-'),
                   symbols=symbols, check_symbols=check_symbols, _quiet=True)
     if "error" in minus:
         # The dictionary is mostly correct, but the target and test strings are wrong:
         minus["target"] = target_str
         minus["test"] = test_str
         minus["case"] = "-"
-        print "=" * 50
+        print("=" * 50)
         return minus
     equal = (plus["equal"] == "true" and minus["equal"] == "true")
     equality_type = eq_type_order([plus["equality_type"], minus["equality_type"]])
-    print "[[OVERALL RESULT]]"
-    print "Equality: %s" % equal
-    print "=" * 50
+    print("[[OVERALL RESULT]]")
+    print("Equality: {}".format(equal))
+    print("=" * 50)
     # We'll return only the strictly positive parsed target and test values for now:
     return dict(
                 target=target_str,
@@ -544,17 +544,17 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
 
     # Suppress this output if necessary:
     if not _quiet:
-        print "=" * 50
+        print("=" * 50)
         # For logging purposes, if we have a description: print it!
         if description is not None:
-            print description
-            print "=" * 50
+            print(description)
+            print("=" * 50)
 
     # If nothing to parse, fail. On server, this will be caught in check_endpoint()
     if (target_str == "") or (test_str == ""):
-        print "ERROR: No input provided!"
+        print("ERROR: No input provided!")
         if not _quiet:
-            print "=" * 50
+            print("=" * 50)
         return dict(error="Empty string as argument.")
 
     # Cleanup the strings before anything is done to them:
@@ -564,26 +564,26 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
         error_is_test = True
         test_str = parsing.cleanup_string(test_str, reject_unsafe_input=True)
     except parsing.UnsafeInputException:
-        print "ERROR: Input contained non-whitelisted characters!"
+        print("ERROR: Input contained non-whitelisted characters!")
         result = dict(error="Bad input provided!")
         if error_is_test:
-            print "Test string: '%s'" % test_str
+            print("Test string: '{}'".format(test_str))
             result["syntax_error"] = str(True).lower()
         if not _quiet:
-            print "=" * 50
+            print("=" * 50)
         return result
 
-    print "Target string: '%s'" % target_str
-    print "Test string: '%s'" % test_str
+    print("Target string: '{}'".format(target_str))
+    print("Test string: '{}'".format(test_str))
 
     # If the input contains a plus-or-minus sign, we need to do things differently:
-    if ((u'±' in target_str) or (u'±' in test_str)):
+    if (('±' in target_str) or ('±' in test_str)):
         return plus_minus_checker(test_str, target_str, symbols=symbols, check_symbols=check_symbols)
 
     # Prevent splitting of known symbols (symbols with underscores are left alone by default anyway):
     local_dict = {}
     if symbols is not None:
-        if isinstance(symbols, str) or isinstance(symbols, unicode):
+        if isinstance(symbols, str) or isinstance(symbols, str):
             symbols = symbols.split(",")
         for s in symbols:
             s = s.strip()
@@ -591,7 +591,7 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
                 # Only want symbols here, not functions or operators!
                 local_dict[s] = sympy.Symbol(s)
 
-    print "[[PARSE EXPRESSIONS]]"
+    print("[[PARSE EXPRESSIONS]]")
     # Parse the trusted target expression:
     target_expr = parse_expression(target_str, local_dict=local_dict)
     # Parse the untrusted test expression:
@@ -600,16 +600,16 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
     result = dict(target=target_str, test=test_str)
 
     if target_expr is None:
-        print "ERROR: TRUSTED EXPRESSION CANNOT BE PARSED!"
+        print("ERROR: TRUSTED EXPRESSION CANNOT BE PARSED!")
         if not _quiet:
-            print "=" * 50
+            print("=" * 50)
         result["error"] = "Parsing TARGET Expression Failed!"
         result["code"] = 400  # This is fatal!
         return result
     if test_expr is None:
-        print "Incorrectly formatted ToCheck expression."
+        print("Incorrectly formatted ToCheck expression.")
         if not _quiet:
-            print "=" * 50
+            print("=" * 50)
         result["error"] = "Parsing Test Expression Failed!"
         result["syntax_error"] = str(True).lower()
         return result
@@ -619,13 +619,13 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
 
     # Now check for symbol match and equality:
     try:
-        print "Parsed Target: %s\nParsed ToCheck: %s" % (target_expr, test_expr)
+        print("Parsed Target: {0}\nParsed ToCheck: {1}".format(target_expr, test_expr))
         if check_symbols:  # Do we have same set of symbols in each?
             incorrect_symbols = contains_incorrect_symbols(test_expr, target_expr)
             if incorrect_symbols is not None:
-                print "[[RESULT]]\nEquality: False"
+                print("[[RESULT]]\nEquality: False")
                 if not _quiet:
-                    print "=" * 50
+                    print("=" * 50)
 
                 result["equal"] = str(False).lower()
                 result["equality_type"] = "symbolic"
@@ -633,24 +633,24 @@ def check(test_str, target_str, symbols=None, check_symbols=True, description=No
                 return result
         # Then check for equality proper:
         equal, equality_type = general_equality(test_expr, target_expr)
-    except EquationTypeMismatch as e:
-        print "Equation/Expression Type Mismatch: can't be equal!"
+    except EquationTypeMismatch:
+        print("Equation/Expression Type Mismatch: can't be equal!")
         equal = False
         equality_type = "symbolic"
     except (SyntaxError, TypeError, AttributeError, NumericRangeException) as e:
-        print "Error when comparing expressions: '%s'." % e
+        print("Error when comparing expressions: '{}'.".format(e))
         if not _quiet:
-            print "=" * 50
-        result["error"] = "Comparison of expressions failed: '%s'" % e
+            print("=" * 50)
+        result["error"] = "Comparison of expressions failed: '{}'".format(e)
         return result
 
-    print "[[RESULT]]"
+    print("[[RESULT]]")
     if equal and (equality_type != "exact") and ((target_expr, test_expr) not in KNOWN_PAIRS):
-        print "INFO: Adding known pair (%s, %s)" % (target_expr, test_expr)
+        print("INFO: Adding known pair ({0}, {1})".format(target_expr, test_expr))
         KNOWN_PAIRS[(target_expr, test_expr)] = equality_type
-    print "Equality: %s" % equal
+    print("Equality: {}".format(equal))
     if not _quiet:
-        print "=" * 50
+        print("=" * 50)
     result["equal"] = str(equal).lower()
     result["equality_type"] = equality_type
     return result

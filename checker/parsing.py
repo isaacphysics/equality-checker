@@ -18,7 +18,7 @@ RELATIONS = {ast.Lt: "<", ast.LtE: "<=", ast.Gt: ">", ast.GtE: ">="}
 # Unicode number and fraction name information:
 NUMBERS = {"ZERO": 0, "ONE": 1, "TWO": 2, "THREE": 3, "FOUR": 4, "FIVE": 5, "SIX": 6, "SEVEN": 7, "EIGHT": 8, "NINE": 9}
 FRACTIONS = {"HALF": 2, "THIRD": 3, "QUARTER": 4, "FIFTH": 5, "SIXTH": 6, "SEVENTH": 7, "EIGHTH": 8, "NINTH": 9, "TENTH": 10}
-FRACTIONS.update({"{}S".format(key): value for key, value in FRACTIONS.iteritems() if key != "HALF"})
+FRACTIONS.update({"{}S".format(key): value for key, value in FRACTIONS.items() if key != "HALF"})
 
 # We need to be able to sanitise user input. Whitelist allowed characters:
 ALLOWED_CHARACTER_LIST = ["\x20",            # space
@@ -29,7 +29,7 @@ ALLOWED_CHARACTER_LIST = ["\x20",            # space
                           "\x41-\x5A",       # uppercase letters A-Z
                           "\x5E-\x5F",       # caret symbol, underscore
                           "\x61-\x7A",       # lowercase letters a-z
-                          u"\u00B1"]         # plus or minus symbol
+                          "\u00B1"]         # plus or minus symbol
 
 # Join these into a regular expression that matches everything except allowed characters:
 UNSAFE_CHARACTERS_REGEX = r"[^" + "".join(ALLOWED_CHARACTER_LIST) + r"]+"
@@ -105,8 +105,8 @@ def cleanup_string(string, reject_unsafe_input):
        sympy; try and remove the worst offending things from strings.
     """
     # Flask gives us unicode objects anyway, the command line might not!
-    if not isinstance(string, unicode):
-        string = unicode(string.decode('utf-8'))  # We'll hope it's UTF-8
+    if not isinstance(string, str):
+        string = str(string.decode('utf-8'))  # We'll hope it's UTF-8
     # Swap any known safe Unicode characters with their ASCII equivalents:
     string = re.sub(NON_ASCII_CHAR_REGEX, process_unicode_chars, string)
     # Replace all non-whitelisted characters in the input:
@@ -153,7 +153,7 @@ class Equal(sympy.Equality):
     """A custom class to override sympy.Equality's str method."""
     def __str__(self):
         """Print the equation in a nice way!"""
-        return "%s == %s" % (self.lhs, self.rhs)
+        return "{0} == {1}".format(self.lhs, self.rhs)
 
     def __repr__(self):
         """Print the equation in a nice way!"""
@@ -256,10 +256,10 @@ def _split_symbols_implicit_precedence(tokens, local_dict, global_dict):
                     if char in local_dict or char in global_dict:
                         # Get rid of the call to Symbol
                         del result[-2:]
-                        result.extend([(tokenize.NAME, "%s" % char),
+                        result.extend([(tokenize.NAME, "{}".format(char)),
                                        (tokenize.NAME, 'Symbol'), (tokenize.OP, '(')])
                     else:
-                        result.extend([(tokenize.NAME, "'%s'" % char), (tokenize.OP, ')'),
+                        result.extend([(tokenize.NAME, "'{}'".format(char)), (tokenize.OP, ')'),
                                        (tokenize.NAME, 'Symbol'), (tokenize.OP, '(')])
                 # Delete the last two tokens: get rid of the extraneous
                 # Symbol( we just added
@@ -324,10 +324,10 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
         # For now, blacklist those known to be problematic:
         _ignore_functions = ["Integer", "Float", "Symbol", "factorial", "sqrt", "Sqrt"]
         if node.func.id in _ignore_functions:
-            # print "\tIgnoring function: %s" % node.func.id
+            # print "\tIgnoring function: {}".format(node.func.id)
             pass
         else:
-            # print "\tModifying function: %s" % node.func.id
+            # print "\tModifying function: {}".format(node.func.id)
             node.keywords.append(self.evaluate_false_keyword)
         # We must return the node, modified or not:
         return node
@@ -402,7 +402,7 @@ def parse_expr(expression_str, transformations=_TRANSFORMS, local_dict=None, glo
        and uses a more aggresive set of transformations and better prevents any
        evaluation.
     """
-    if not isinstance(expression_str, (str, unicode)):
+    if not isinstance(expression_str, str):
         return None
     elif expression_str == "" or len(expression_str) == 0:
         return None
@@ -421,5 +421,5 @@ def parse_expr(expression_str, transformations=_TRANSFORMS, local_dict=None, glo
         code_compiled = compile(ef_code, '<string>', 'eval')
         return sympy_parser.eval_expr(code_compiled, local_dict, global_dict)
     except (tokenize.TokenError, SyntaxError, TypeError, AttributeError, sympy.SympifyError) as e:
-        print ("ERROR: %s - %s" % (type(e).__name__, e.message)).strip(":- ")
+        print(("ERROR: {0} - {1}".format(type(e).__name__, str(e))).strip(":- "))
         raise ParsingException
