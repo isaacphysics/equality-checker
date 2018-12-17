@@ -18,7 +18,7 @@ class TestExactMatching(unittest.TestCase):
         test_str = "1"
         target_str = "1"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -33,7 +33,7 @@ class TestExactMatching(unittest.TestCase):
         test_str = " .765625059"
         target_str = "0.765625059"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -48,7 +48,7 @@ class TestExactMatching(unittest.TestCase):
         test_str = "5"
         target_str = "1"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -62,7 +62,7 @@ class TestExactMatching(unittest.TestCase):
         test_str = "x"
         target_str = "x"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -77,7 +77,7 @@ class TestExactMatching(unittest.TestCase):
         test_str = "1 + x"
         target_str = "x + 1"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -92,7 +92,7 @@ class TestExactMatching(unittest.TestCase):
         test_str = "x"
         target_str = "y"
         symbols = None
-        response = api.check(test_str, target_str, symbols, check_symbols=False)
+        response = api.check(test_str, target_str, symbols=symbols, check_symbols=False)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -106,7 +106,7 @@ class TestExactMatching(unittest.TestCase):
         test_str = "((x))"
         target_str = "x"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -121,7 +121,7 @@ class TestExactMatching(unittest.TestCase):
         test_str = "x * y * z"
         target_str = "z * x * y"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -136,7 +136,7 @@ class TestExactMatching(unittest.TestCase):
         test_str = "(x + 1)(x + 2)"
         target_str = "(x + 2)(x + 1)"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -151,7 +151,7 @@ class TestExactMatching(unittest.TestCase):
         test_str = "x*(1/y)"
         target_str = "x/y"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -166,7 +166,7 @@ class TestExactMatching(unittest.TestCase):
         test_str = "log(x) / log(10)"
         target_str = "log(x, 10)"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -181,7 +181,7 @@ class TestExactMatching(unittest.TestCase):
         test_str = "cos(x)"
         target_str = "cos(-x)"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -196,7 +196,7 @@ class TestExactMatching(unittest.TestCase):
         test_str = "xyz"
         target_str = "x * y * z"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -218,7 +218,7 @@ class TestSymbolicMatching(unittest.TestCase):
         test_str = "(2*x*y*x)/(2*x*y*y)"
         target_str = "x/y"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -233,7 +233,7 @@ class TestSymbolicMatching(unittest.TestCase):
         test_str = "(x + 1)(x + 1)"
         target_str = "x**2 + 2*x + 1"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -248,7 +248,7 @@ class TestSymbolicMatching(unittest.TestCase):
         test_str = "sqrt(x**2)"
         target_str = "x"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -263,7 +263,7 @@ class TestSymbolicMatching(unittest.TestCase):
         test_str = "720 + 1764 x + 1624 x^2 + 735 x^3 + 175 x^4 + 21 x^5 + x^6"
         target_str = "(x+1)(x+2)(x+3)(x+4)(x+5)(x+6)"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -278,7 +278,7 @@ class TestSymbolicMatching(unittest.TestCase):
         test_str = "arcsin(x) + arccos(x) + arctan(x) + sin(x)**2 + cos(x)**2 + tan(x)"
         target_str = "1 + tan(x) + arcsin(x) + arccos(x) + arctan(x)"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -293,7 +293,7 @@ class TestSymbolicMatching(unittest.TestCase):
         test_str = "ArcSin(x) + ArcCos(x) + ArcTan(x) + Sin(x)**2 + Cos(x)**2 + Tan(x)"
         target_str = "1 + tan(x) + arcsin(x) + arccos(x) + arctan(x)"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -308,7 +308,7 @@ class TestSymbolicMatching(unittest.TestCase):
         test_str = "x*log(x)/log(10) + ln(3) + ln(2)"
         target_str = "log(x,10)*x + ln(6)"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -329,7 +329,7 @@ class TestCheckSymbols(unittest.TestCase):
         test_str = "sin(exp(sqrt(2*x)))**2 + cos(exp(sqrt(x))**sqrt(2))**2"
         target_str = "1"
         symbols = None
-        response = api.check(test_str, target_str, symbols, check_symbols=False)
+        response = api.check(test_str, target_str, symbols=symbols, check_symbols=False)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -344,7 +344,7 @@ class TestCheckSymbols(unittest.TestCase):
         test_str = "sin(exp(sqrt(2*x)))**2 + cos(exp(sqrt(x))**sqrt(2))**2"
         target_str = "1"
         symbols = None
-        response = api.check(test_str, target_str, symbols, check_symbols=True)
+        response = api.check(test_str, target_str, symbols=symbols, check_symbols=True)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -365,7 +365,7 @@ class TestEquationAndInequalitySupport(unittest.TestCase):
         test_str = "x**2 + x + 1 == 0"
         target_str = "x + 1 + x**2 == 0"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -380,7 +380,7 @@ class TestEquationAndInequalitySupport(unittest.TestCase):
         test_str = "x**2 + x + 1 > 0"
         target_str = "0 < x + 1 + x**2"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -395,7 +395,7 @@ class TestEquationAndInequalitySupport(unittest.TestCase):
         test_str = "x**2 + x + 1 > 0"
         target_str = "x + 1 + x**2 >= 0"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -426,7 +426,7 @@ class TestDerivativeSupport(unittest.TestCase):
         test_str = "2 * Derivative(y, x) / 2"
         target_str = "Derivative(y, x)"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -442,7 +442,7 @@ class TestDerivativeSupport(unittest.TestCase):
         test_str = "Derivative(Derivative(y, x), x) == y*cos(x) + sin(x)*Derivative(y, x)"
         target_str = "Derivative(y, x, x) == Derivative(sin(x) * y, x)"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -458,7 +458,7 @@ class TestDerivativeSupport(unittest.TestCase):
         test_str = "Derivative(cos(x)**2, x)"
         target_str = "-2 sin(x)cos(x)"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -473,7 +473,7 @@ class TestDerivativeSupport(unittest.TestCase):
         test_str = "Derivative(cos(x)**2, x)"
         target_str = "-2 sin(x)cos(x)"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -495,7 +495,7 @@ class TestSymbolParsingAndSplitting(unittest.TestCase):
         test_str = "2as + 4for + is + print"
         target_str = "2*a*s + 4*f*o*r + i*s + p*r*i*n*t"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -510,7 +510,7 @@ class TestSymbolParsingAndSplitting(unittest.TestCase):
         test_str = "v_zmf**(2) == v_x**2 + v_y**2"
         target_str = "v_zmf * v_zmf == v_x * v_x + v_y * v_y"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -525,7 +525,7 @@ class TestSymbolParsingAndSplitting(unittest.TestCase):
         test_str = "test == abcd / d"
         target_str = "test == abc"
         symbols = "test, abcd, abc"
-        response = api.check(test_str, target_str, symbols, check_symbols=False)
+        response = api.check(test_str, target_str, symbols=symbols, check_symbols=False)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -540,7 +540,7 @@ class TestOthers(unittest.TestCase):
         test_str = "a ± b"
         target_str = "a ± b"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" not in response, 'Unexpected "error" in response!')
         self.assertTrue("equal" in response, 'Key "equal" not in response!')
@@ -555,7 +555,7 @@ class TestOthers(unittest.TestCase):
         test_str = "(a + b +"
         target_str = "a + b"
         symbols = None
-        response = api.check(test_str, target_str, symbols)
+        response = api.check(test_str, target_str, symbols=symbols)
 
         self.assertTrue("error" in response, 'Expected "error" in response!')
         self.assertTrue("syntax_error" in response, 'Key "syntax_error" not in response!')
@@ -568,7 +568,7 @@ class TestOthers(unittest.TestCase):
 #        test_str = "factorial(1000)"
 #        target_str = "1"
 #        symbols = None
-#        response = api.check(test_str, target_str, symbols)
+#        response = api.check(test_str, target_str, symbols=symbols)
 #
 #        self.assertTrue("error" in response, 'Unexpected lack of "error" in response!')
 #        self.assertTrue(response["error"] == "Parsing Test Expression Failed.", "Error message not as expected '{}'.".format(response["error"]))
@@ -652,7 +652,7 @@ class TestParsing(unittest.TestCase):
 
         for s in strings:
             # These strings should not be left unmodified by cleanup_string:
-            clean_s = parsing.cleanup_string(s, False)
+            clean_s = parsing.cleanup_string(s, reject_unsafe_input=False)
             print("Unsafe input  : '{}'".format(s))
             print("Cleaner input : '{}'".format(clean_s))
             equal = (clean_s == s)

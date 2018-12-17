@@ -59,7 +59,7 @@ def known_equal_pair(test_expr, target_expr):
         return (False, "known")
 
 
-def parse_expression(expression_str, local_dict=None):
+def parse_expression(expression_str, *, local_dict=None):
     """Take a string containing a mathematical expression and return a sympy expression.
 
        Wrap the parsing class function parse_expr(...) and catch any exceptions
@@ -241,7 +241,7 @@ def symbolic_equality(test_expr, target_expr):
         return False
 
 
-def numeric_equality(test_expr, target_expr, complexify=False):
+def numeric_equality(test_expr, target_expr, *, complexify=False):
     """Test if two expressions are numerically equivalent to one another.
 
        The implementation of this method is liable to change and currently has
@@ -456,7 +456,7 @@ def general_equality(test_expr, target_expr):
         return expr_equality(test_expr, target_expr)
 
 
-def plus_minus_checker(test_str, target_str, symbols=None, check_symbols=True):
+def plus_minus_checker(test_str, target_str, *, symbols=None, check_symbols=True):
     """A checking function for inputs containing the ± character.
 
        Using the same arguments as the check(...) function, deals with multivalued
@@ -520,7 +520,7 @@ def plus_minus_checker(test_str, target_str, symbols=None, check_symbols=True):
             )
 
 
-def check(test_str, target_str, symbols=None, check_symbols=True, description=None,
+def check(test_str, target_str, *, symbols=None, check_symbols=True, description=None,
           _quiet=False):
     """The main checking function, calls each of the equality checking functions as required.
 

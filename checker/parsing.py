@@ -98,7 +98,7 @@ def process_unicode_chars(match_object):
     return result
 
 
-def cleanup_string(string, reject_unsafe_input):
+def cleanup_string(string, *, reject_unsafe_input):
     """Some simple sanity checking and cleanup to perform on passed in strings.
 
        Since arbitrary strings are passed in, and 'eval' is used implicitly by
@@ -392,7 +392,7 @@ _GLOBAL_DICT = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy
                 "Sqrt": sympy.sqrt, "Abs": sympy.Abs}
 
 
-def parse_expr(expression_str, transformations=_TRANSFORMS, local_dict=None, global_dict=_GLOBAL_DICT):
+def parse_expr(expression_str, *, transformations=_TRANSFORMS, local_dict=None, global_dict=_GLOBAL_DICT):
     """A clone of sympy.sympy_parser.parse_expr(...) which prevents all evaluation.
 
        Arbitrary untrusted input should be cleaned using "cleanup_string" before

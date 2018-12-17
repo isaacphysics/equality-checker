@@ -105,7 +105,7 @@ def check_endpoint():
     # a value for MAX_REQUEST_COMPUTATION_TIME.
     try:
         with TimeoutProtection(MAX_REQUEST_COMPUTATION_TIME):
-            response_dict = api.check(test_str, target_str, symbols, check_symbols, description)
+            response_dict = api.check(test_str, target_str, symbols=symbols, check_symbols=check_symbols, description=description)
             return jsonify(**response_dict)
     except TimeoutException as e:
         print("ERROR: {} - Request took too long to process, aborting!".format(type(e).__name__))
