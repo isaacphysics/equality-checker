@@ -29,7 +29,7 @@ ALLOWED_CHARACTER_LIST = ["\x20",            # space
                           "\x41-\x5A",       # uppercase letters A-Z
                           "\x5E-\x5F",       # caret symbol, underscore
                           "\x61-\x7A",       # lowercase letters a-z
-                          "\u00B1"]         # plus or minus symbol
+                          "\u00B1"]          # plus or minus symbol
 
 # Join these into a regular expression that matches everything except allowed characters:
 UNSAFE_CHARACTERS_REGEX = r"[^" + "".join(ALLOWED_CHARACTER_LIST) + r"]+"
