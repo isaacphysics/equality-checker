@@ -3,7 +3,7 @@
 import numpy
 import sympy
 
-from .parsing import maths_parser
+from .parsing import maths_parser, UnsafeInputException
 
 
 # Hack to fix a bug with lambdify and complex infinity ('zoo') when transforming

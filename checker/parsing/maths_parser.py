@@ -8,8 +8,9 @@ from sympy.parsing import sympy_parser
 from sympy.core.numbers import Integer, Float, Rational
 from sympy.core.basic import Basic
 
+from . import ParsingException, UnsafeInputException
 
-__all__ = ["UnsafeInputException", "ParsingException", "cleanup_string", "is_valid_symbol", "parse_expr"]
+__all__ = ["cleanup_string", "is_valid_symbol", "parse_expr"]
 
 
 # What constitutes a relation?
@@ -42,16 +43,6 @@ NON_SYMBOL_REGEX = r"[^\x30-\x39\x41-\x5A\x61-\x7A\x5F]+"
 #####
 # Parsing Cleanup
 #####
-
-class ParsingException(ValueError):
-    """An exception to be raised when parsing fails."""
-    pass
-
-
-class UnsafeInputException(ValueError):
-    """An exception to be raised when unexpected input is provided."""
-    pass
-
 
 def process_unicode_chars(match_object):
     """Clean a string of Unicode characters into Python maths characters if possible."""
