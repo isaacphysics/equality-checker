@@ -3,7 +3,7 @@
 import numpy
 import sympy
 
-import parsing
+from .parsing import maths_parser
 
 
 # Hack to fix a bug with lambdify and complex infinity ('zoo') when transforming
@@ -69,8 +69,8 @@ def parse_expression(expression_str, *, local_dict=None):
           specified. It may be None.
     """
     try:
-        return parsing.parse_expr(expression_str, local_dict=local_dict)
-    except parsing.ParsingException:
+        return maths_parser.parse_expr(expression_str, local_dict=local_dict)
+    except maths_parser.ParsingException:
         print("Incorrectly formatted expression.")
         print("Fail: '{}'.".format(expression_str))
         return None
@@ -560,10 +560,10 @@ def check(test_str, target_str, *, symbols=None, check_symbols=True, description
     # Cleanup the strings before anything is done to them:
     error_is_test = False
     try:
-        target_str = parsing.cleanup_string(target_str, reject_unsafe_input=True)
+        target_str = maths_parser.cleanup_string(target_str, reject_unsafe_input=True)
         error_is_test = True
-        test_str = parsing.cleanup_string(test_str, reject_unsafe_input=True)
-    except parsing.UnsafeInputException:
+        test_str = maths_parser.cleanup_string(test_str, reject_unsafe_input=True)
+    except UnsafeInputException:
         print("ERROR: Input contained non-whitelisted characters!")
         result = dict(error="Bad input provided!")
         if error_is_test:
@@ -587,7 +587,7 @@ def check(test_str, target_str, *, symbols=None, check_symbols=True, description
             symbols = symbols.split(",")
         for s in symbols:
             s = s.strip()
-            if parsing.is_valid_symbol(s):
+            if maths_parser.is_valid_symbol(s):
                 # Only want symbols here, not functions or operators!
                 local_dict[s] = sympy.Symbol(s)
 

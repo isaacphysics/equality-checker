@@ -4,10 +4,10 @@ from flask import Flask, request, jsonify, abort
 from werkzeug.exceptions import default_exceptions
 from werkzeug.exceptions import HTTPException
 
-import api
+from .. import maths
 
 
-__all__ = []
+__all__ = ["app"]
 
 MAX_REQUEST_COMPUTATION_TIME = 5  # How long should we spend on a single request?
 
@@ -105,7 +105,7 @@ def check_endpoint():
     # a value for MAX_REQUEST_COMPUTATION_TIME.
     try:
         with TimeoutProtection(MAX_REQUEST_COMPUTATION_TIME):
-            response_dict = api.check(test_str, target_str, symbols=symbols, check_symbols=check_symbols, description=description)
+            response_dict = maths.check(test_str, target_str, symbols=symbols, check_symbols=check_symbols, description=description)
             return jsonify(**response_dict)
     except TimeoutException as e:
         print("ERROR: {} - Request took too long to process, aborting!".format(type(e).__name__))

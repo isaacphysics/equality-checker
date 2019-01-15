@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-import api
-import parsing
+
+from checker import maths as api
+from checker.parsing import maths_parser as parsing
 
 EQUALITY_TYPES = ["exact", "symbolic", "numeric"]
 
