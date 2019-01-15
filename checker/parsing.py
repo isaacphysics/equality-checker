@@ -362,53 +362,75 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
 # These constants are needed to address some security issues.
 # We don't want to use the default transformations, and we need to use a
 # whitelist of functions the parser should allow to match.
-_TRANSFORMS = (sympy_parser.auto_number, _auto_symbol,
-               sympy_parser.convert_xor, sympy_parser.split_symbols,
-               sympy_parser.implicit_multiplication, sympy_parser.function_exponentiation)
+_TRANSFORMS = (
+    sympy_parser.auto_number, _auto_symbol,
+    sympy_parser.convert_xor, sympy_parser.split_symbols,
+    sympy_parser.implicit_multiplication, sympy_parser.function_exponentiation
+)
 
-_GLOBAL_DICT = {"Symbol": sympy.Symbol, "Integer": sympy.Integer, "Float": sympy.Float, "Rational": sympy.Rational,
-                "Mul": sympy.Mul, "Pow": sympy.Pow, "Add": sympy.Add,
-                "iI": sympy.I, "piPI": sympy.pi, "eE": sympy.E,
-                "Rel": sympy.Rel, "Eq": Equal,
-                "Derivative": sympy.Derivative, "diff": sympy.Derivative,
-                "sin": sympy.sin, "cos": sympy.cos, "tan": sympy.tan,
-                "Sin": sympy.sin, "Cos": sympy.cos, "Tan": sympy.tan,
-                "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
-                "asin": sympy.asin, "acos": sympy.acos, "atan": sympy.atan,
-                "ArcSin": sympy.asin, "ArcCos": sympy.acos, "ArcTan": sympy.atan,
-                "sinh": sympy.sinh, "cosh": sympy.cosh, "tanh": sympy.tanh,
-                "arcsinh": sympy.asinh, "arccosh": sympy.acosh, "arctanh": sympy.atanh,
-                "asinh": sympy.asinh, "acosh": sympy.acosh, "atanh": sympy.atanh,
-                "cosec": sympy.csc, "sec": sympy.sec, "cot": sympy.cot,
-                "Csc": sympy.csc, "Sec": sympy.sec, "Cot": sympy.cot,
-                "arccosec": sympy.acsc, "arcsec": sympy.asec, "arccot": sympy.acot,
-                "acsc": sympy.acsc, "asec": sympy.asec, "acot": sympy.acot,
-                "ArcCsc": sympy.acsc, "ArcSec": sympy.asec, "ArcCot": sympy.acot,
-                "cosech": sympy.csch, "sech": sympy.sech, "coth": sympy.coth,
-                "exp": sympy.exp, "log": logarithm, "ln": sympy.ln,
-                "Exp": sympy.exp, "Log": logarithm, "Ln": sympy.ln,
-                # "factorial": factorial,  "Factorial": factorial,
-                "sqrt": sympy.sqrt, "abs": sympy.Abs,
-                "Sqrt": sympy.sqrt, "Abs": sympy.Abs}
+_GLOBAL_DICT = {
+    "Symbol": sympy.Symbol, "Integer": sympy.Integer,
+    "Float": sympy.Float, "Rational": sympy.Rational,
+    "Mul": sympy.Mul, "Pow": sympy.Pow, "Add": sympy.Add,
+    "Rel": sympy.Rel, "Eq": Equal,
+    "Derivative": sympy.Derivative, "diff": sympy.Derivative,
+    "sin": sympy.sin, "cos": sympy.cos, "tan": sympy.tan,
+    "Sin": sympy.sin, "Cos": sympy.cos, "Tan": sympy.tan,
+    "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
+    "asin": sympy.asin, "acos": sympy.acos, "atan": sympy.atan,
+    "ArcSin": sympy.asin, "ArcCos": sympy.acos, "ArcTan": sympy.atan,
+    "sinh": sympy.sinh, "cosh": sympy.cosh, "tanh": sympy.tanh,
+    "arcsinh": sympy.asinh, "arccosh": sympy.acosh, "arctanh": sympy.atanh,
+    "asinh": sympy.asinh, "acosh": sympy.acosh, "atanh": sympy.atanh,
+    "cosec": sympy.csc, "sec": sympy.sec, "cot": sympy.cot,
+    "Csc": sympy.csc, "Sec": sympy.sec, "Cot": sympy.cot,
+    "arccosec": sympy.acsc, "arcsec": sympy.asec, "arccot": sympy.acot,
+    "acsc": sympy.acsc, "asec": sympy.asec, "acot": sympy.acot,
+    "ArcCsc": sympy.acsc, "ArcSec": sympy.asec, "ArcCot": sympy.acot,
+    "cosech": sympy.csch, "sech": sympy.sech, "coth": sympy.coth,
+    "exp": sympy.exp, "log": logarithm, "ln": sympy.ln,
+    "Exp": sympy.exp, "Log": logarithm, "Ln": sympy.ln,
+    # "factorial": factorial,  "Factorial": factorial,
+    "sqrt": sympy.sqrt, "abs": sympy.Abs,
+    "Sqrt": sympy.sqrt, "Abs": sympy.Abs
+}
+
+_PARSE_HINTS = {
+    "constant_pi": {"pi": sympy.pi},
+    "constant_e": {"e": sympy.E},
+    "imaginary_i": {"i": sympy.I},
+    "imaginary_j": {"j": sympy.I},
+    "natural_logarithm": {"log": sympy.log, "Log": sympy.log}
+}
 
 
-def parse_expr(expression_str, *, transformations=_TRANSFORMS, local_dict=None, global_dict=_GLOBAL_DICT):
-    """A clone of sympy.sympy_parser.parse_expr(...) which prevents all evaluation.
+def parse_expr(expression_str, *, local_dict=None, hints=None):
+    """A copy of sympy.sympy_parser.parse_expr(...) which prevents all evaluation.
 
        Arbitrary untrusted input should be cleaned using "cleanup_string" before
        calling this method.
        This is almost a direct copy of the SymPy code, but it also converts inline
        relations like "==" or ">=" to the Relation class to prevent evaluation
        and uses a more aggresive set of transformations and better prevents any
-       evaluation.
+       evaluation. It also ignores the 'global_dict', 'transformations' and
+       'evaluate' arguments of the original function.
+       Hints can be provided to choose between ambiguous parsings, like 'i' being
+       either a letter or sqrt(-1). These should be values from _PARSE_HINTS.
     """
     if not isinstance(expression_str, str):
         return None
     elif expression_str == "" or len(expression_str) == 0:
         return None
 
-    if local_dict is None:
+    # Ensure the local dictionary is valid:
+    if local_dict is None or not isinstance(local_dict, dict):
         local_dict = {}
+
+    # If there are parse hints, add them to the local dictionary:
+    if hints is not None and isinstance(hints, (list, tuple)):
+        for hint in hints:
+            if hint in _PARSE_HINTS:
+                local_dict.update(_PARSE_HINTS[hint])
 
     # FIXME: Avoid parsing issues with notation for Python longs.
     # E.g. the string '2L' should not be interpreted as "two stored as a long".
@@ -416,10 +438,10 @@ def parse_expr(expression_str, *, transformations=_TRANSFORMS, local_dict=None, 
     expression_str = re.sub(r'([0-9])([lL])', '\g<1> \g<2>', expression_str)
 
     try:
-        code = sympy_parser.stringify_expr(expression_str, local_dict, global_dict, transformations)
+        code = sympy_parser.stringify_expr(expression_str, local_dict, _GLOBAL_DICT, _TRANSFORMS)
         ef_code = _evaluateFalse(code)
         code_compiled = compile(ef_code, '<string>', 'eval')
-        return sympy_parser.eval_expr(code_compiled, local_dict, global_dict)
+        return sympy_parser.eval_expr(code_compiled, local_dict, _GLOBAL_DICT)
     except (tokenize.TokenError, SyntaxError, TypeError, AttributeError, sympy.SympifyError) as e:
         print(("ERROR: {0} - {1}".format(type(e).__name__, str(e))).strip(":- "))
         raise ParsingException
