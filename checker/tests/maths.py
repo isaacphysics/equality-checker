@@ -3,9 +3,10 @@
 import unittest
 
 from checker import maths as api
+from checker.utils import EqualityType
 from checker.parsing import maths_parser as parsing
 
-EQUALITY_TYPES = ["exact", "symbolic", "numeric"]
+EQUALITY_TYPES = [t.value for t in EqualityType if t is not EqualityType.KNOWN]
 
 
 #####

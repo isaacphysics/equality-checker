@@ -3,6 +3,8 @@
 import numpy
 import sympy
 
+from .utils import known_equal_pair, eq_type_order, contains_incorrect_symbols
+from .utils import EqualityType
 from .parsing import maths_parser, UnsafeInputException
 
 
@@ -43,22 +45,6 @@ class EquationTypeMismatch(TypeError):
     pass
 
 
-def known_equal_pair(test_expr, target_expr):
-    """In lieu of any real persistent cache of known pairs, just use a dict for now!
-
-       Checks if the two expressions are known pairs from previous testing; this
-       should reduce calls to 'simplify' and the numeric testing, both of which
-       are computationally costly and slow.
-    """
-    print("[[KNOWN PAIR CHECK]]")
-    pair = (target_expr, test_expr)
-    if pair in KNOWN_PAIRS:
-        print("Known Pair from {} equality!".format(KNOWN_PAIRS[pair]))
-        return (True, KNOWN_PAIRS[pair])
-    else:
-        return (False, "known")
-
-
 def parse_expression(expression_str, *, local_dict=None):
     """Take a string containing a mathematical expression and return a sympy expression.
 
@@ -74,52 +60,6 @@ def parse_expression(expression_str, *, local_dict=None):
         print("Incorrectly formatted expression.")
         print("Fail: '{}'.".format(expression_str))
         return None
-
-
-def contains_incorrect_symbols(test_expr, target_expr):
-    """Test if the entered expression contains exactly the same symbols as the target.
-
-       Sometimes expressions can be mathematically identical to one another, but
-       contain different symbols. From a pure maths standpoint, this is fine; but
-       in questions you may not want to allow undefined symbols. This function will
-       return a dict containing entries for any extra/missing symbols.
-        - 'test_expr' should be the untrusted sympy expression to check symbols from.
-        - 'target_expr' should be the trusted sympy expression to match symbols to.
-    """
-    print("[[SYMBOL CHECK]]")
-    if test_expr.free_symbols != target_expr.free_symbols:
-        print("Symbol mismatch between test and target!")
-        result = dict()
-        missing = ",".join(map(str, list(target_expr.free_symbols.difference(test_expr.free_symbols))))
-        extra = ",".join(map(str, list(test_expr.free_symbols.difference(target_expr.free_symbols))))
-        missing = missing.replace("lamda", "lambda").replace("Lamda", "Lambda")
-        extra = extra.replace("lamda", "lambda").replace("Lamda", "Lambda")
-        if len(missing) > 0:
-            print("Test Expression missing: {}".format(missing))
-            result["missing"] = missing
-        if len(extra) > 0:
-            print("Test Expression has extra: {}".format(extra))
-            result["extra"] = extra
-        print("Not Equal: Enforcing strict symbol match for correctness!")
-        return result
-    else:
-        return None
-
-
-def eq_type_order(eq_types):
-    """Return the worst equality type from a list of equality types.
-
-       Useful for indicating what type of match an equation or relation has: give
-       the worst possible type since this is the weakest link in the equality checking.
-    """
-    if "numeric" in eq_types:
-        return "numeric"
-    elif "symbolic" in eq_types:
-        return "symbolic"
-    elif "exact" in eq_types:
-        return "exact"
-    else:
-        raise TypeError("Unexpected list of equality types: {}".format(eq_types))
 
 
 def simplify_derivative(derivative):
@@ -232,7 +172,7 @@ def symbolic_equality(test_expr, target_expr):
         if sympy.simplify(sympy.posify(test_expr - target_expr)[0]) == 0:
             print("Symbolic match.")
             print("INFO: Adding known pair ({0}, {1})".format(target_expr, test_expr))
-            KNOWN_PAIRS[(target_expr, test_expr)] = "symbolic"
+            KNOWN_PAIRS[(target_expr, test_expr)] = EqualityType.SYMBOLIC
             return True
         else:
             return False
@@ -368,7 +308,7 @@ def numeric_equality(test_expr, target_expr, *, complexify=False):
     print("Numeric Equality Tested: absolute difference of {:.6E}".format(diff))
     if diff <= (1E-10 * numpy.max(numpy.abs(eval_f_target))):
         print("INFO: Adding known pair ({0}, {1})".format(target_expr, test_expr))
-        KNOWN_PAIRS[(target_expr, test_expr)] = "numeric"
+        KNOWN_PAIRS[(target_expr, test_expr)] = EqualityType.NUMERIC
         return True
     else:
         return False
@@ -384,7 +324,7 @@ def expr_equality(test_expr, target_expr):
     """
     if test_expr.is_Relational or target_expr.is_Relational:
         raise TypeError("Can't check nested equalities/inequalities!")
-    equality_type = "exact"
+    equality_type = EqualityType.EXACT
     equal = exact_match(test_expr, target_expr)
     if not equal:
         # Now is the best time to simplify any derivatives:
@@ -393,10 +333,10 @@ def expr_equality(test_expr, target_expr):
             target_expr = simplify_derivatives(target_expr)
             test_expr = simplify_derivatives(test_expr)
         # Then try checking for symbolic equality:
-        equality_type = "symbolic"
+        equality_type = EqualityType.SYMBOLIC
         equal = symbolic_equality(test_expr, target_expr)
     if not equal:
-        equality_type = "numeric"
+        equality_type = EqualityType.NUMERIC
         equal = numeric_equality(test_expr, target_expr)
     return equal, equality_type
 
@@ -407,7 +347,7 @@ def general_equality(test_expr, target_expr):
         - 'test_expr' should be the untrusted sympy object to check.
         - 'target_expr' should be the trusted sympy object to match against.
     """
-    equal, equality_type = known_equal_pair(test_expr, target_expr)
+    equal, equality_type = known_equal_pair(KNOWN_PAIRS, test_expr, target_expr)
     # If this is a known pair: return immediately:
     if equal:
         return equal, equality_type
@@ -482,7 +422,7 @@ def plus_minus_checker(test_str, target_str, *, symbols=None, check_symbols=True
             target=target_str,
             test=test_str,
             equal=str(False).lower(),
-            equality_type="symbolic",
+            equality_type=EqualityType.SYMBOLIC.value,
             )
     print("[[Multi-Valued: Case Using +ve Value]]")
     plus = check(test_str.replace('±', '+'), target_str.replace('±', '+'),
@@ -505,7 +445,7 @@ def plus_minus_checker(test_str, target_str, *, symbols=None, check_symbols=True
         print("=" * 50)
         return minus
     equal = (plus["equal"] == "true" and minus["equal"] == "true")
-    equality_type = eq_type_order([plus["equality_type"], minus["equality_type"]])
+    equality_type = eq_type_order([EqualityType(t) for t in [plus["equality_type"], minus["equality_type"]]])
     print("[[OVERALL RESULT]]")
     print("Equality: {}".format(equal))
     print("=" * 50)
@@ -516,7 +456,7 @@ def plus_minus_checker(test_str, target_str, *, symbols=None, check_symbols=True
                 parsed_target=plus["parsed_target"],
                 parsed_test=plus["parsed_test"],
                 equal=str(equal).lower(),
-                equality_type=equality_type,
+                equality_type=equality_type.value,
             )
 
 
@@ -636,7 +576,7 @@ def check(test_str, target_str, *, symbols=None, check_symbols=True, description
     except EquationTypeMismatch:
         print("Equation/Expression Type Mismatch: can't be equal!")
         equal = False
-        equality_type = "symbolic"
+        equality_type = EqualityType.SYMBOLIC
     except (SyntaxError, TypeError, AttributeError, NumericRangeException) as e:
         print("Error when comparing expressions: '{}'.".format(e))
         if not _quiet:
@@ -645,12 +585,12 @@ def check(test_str, target_str, *, symbols=None, check_symbols=True, description
         return result
 
     print("[[RESULT]]")
-    if equal and (equality_type != "exact") and ((target_expr, test_expr) not in KNOWN_PAIRS):
+    if equal and (equality_type is not EqualityType.EXACT) and ((target_expr, test_expr) not in KNOWN_PAIRS):
         print("INFO: Adding known pair ({0}, {1})".format(target_expr, test_expr))
         KNOWN_PAIRS[(target_expr, test_expr)] = equality_type
     print("Equality: {}".format(equal))
     if not _quiet:
         print("=" * 50)
     result["equal"] = str(equal).lower()
-    result["equality_type"] = equality_type
+    result["equality_type"] = equality_type.value
     return result
