@@ -4,7 +4,7 @@ from flask import Flask, request, jsonify, abort
 from werkzeug.exceptions import default_exceptions
 from werkzeug.exceptions import HTTPException
 
-from .. import maths
+from checker import maths, logic
 
 
 __all__ = ["app"]
@@ -71,8 +71,9 @@ def _make_json_error(ex):
 
 
 @app.route('/check', methods=["POST"])
-def check_endpoint():
-    """The route Flask uses to submit things to be checked."""
+@app.route('/check/maths', methods=["POST"])
+def check_maths():
+    """Check the equivalence of two mathematical expressions."""
     body = request.get_json(force=True)
 
     if not (("test" in body) and ("target" in body)):
@@ -106,6 +107,53 @@ def check_endpoint():
     try:
         with TimeoutProtection(MAX_REQUEST_COMPUTATION_TIME):
             response_dict = maths.check(test_str, target_str, symbols=symbols, check_symbols=check_symbols, description=description)
+            return jsonify(**response_dict)
+    except TimeoutException as e:
+        print("ERROR: {} - Request took too long to process, aborting!".format(type(e).__name__))
+        print("=" * 50)
+        error_dict = dict(
+            target=target_str,
+            test=test_str,
+            error="Request took too long to process!",
+            )
+        return jsonify(**error_dict)
+
+
+@app.route('/check/logic', methods=["POST"])
+def check_endpoint():
+    """Check the equivalence of two boolean logic expressions."""
+    body = request.get_json(force=True)
+
+    if not (("test" in body) and ("target" in body)):
+        print("=" * 50)
+        print("ERROR: Ill-formed request!")
+        print(body)
+        print("=" * 50)
+        abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
+
+    target_str = body.get("target")
+    test_str = body.get("test")
+    description = body.get("description")
+
+    if (target_str == "") or (test_str == ""):
+        print("=" * 50)
+        if description is not None:
+            print(description)
+            print("=" * 50)
+        print("ERROR: Empty string in request!")
+        print("Target: '{0}'\nTest: '{1}'".format(target_str, test_str))
+        print("=" * 50)
+        abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
+
+    check_symbols = str(body.get("check_symbols", "true")).lower() == "true"
+
+    # To reduce computation issues on single-threaded server, institute a timeout
+    # for requests. If it takes longer than this to process, return an error.
+    # This cannot interrupt numpy's computation, so care must be taken in selecting
+    # a value for MAX_REQUEST_COMPUTATION_TIME.
+    try:
+        with TimeoutProtection(MAX_REQUEST_COMPUTATION_TIME):
+            response_dict = logic.check(test_str, target_str, check_symbols=check_symbols, description=description)
             return jsonify(**response_dict)
     except TimeoutException as e:
         print("ERROR: {} - Request took too long to process, aborting!".format(type(e).__name__))

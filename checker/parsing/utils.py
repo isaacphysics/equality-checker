@@ -54,6 +54,12 @@ def process_unicode_chars(match_object):
             result += "<="
         elif name in ["GREATER-THAN OR EQUAL TO", "GREATER-THAN OR SLANTED EQUAL TO"]:
             result += ">="
+        elif name == "LOGICAL AND":
+            result += "&"
+        elif name == "LOGICAL OR":
+            result += "|"
+        elif name == "NOT SIGN":
+            result += "~"
         else:
             result += char
 
@@ -140,6 +146,45 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
             return ast.Call(func=ast.Name(id='Rel', ctx=ast.Load()), args=[node.left, node.comparators[0], ast.Str(RELATIONS[operator_class])], keywords=[self._evaluate_false_keyword])
         else:
             # An unknown type of relation. Leave alone:
+            return node
+
+    def visit_BinOp(self, node):
+        """Ensure Implies is not simplified."""
+        # "Implies", which overloads bit-shifting, mustn't get simplified:
+        node_class = node.op.__class__
+        if node_class in [ast.LShift, ast.RShift]:
+            # As above, must ensure child nodes are visited:
+            right = self.visit(node.right)
+            left = self.visit(node.left)
+            if node_class is ast.LShift:
+                left, right = right, left
+            return ast.Call(func=ast.Name(id="Implies", ctx=ast.Load()), args=[left, right], keywords=[self._evaluate_false_keyword])
+        else:
+            # Otherwise we want ensure the parent SymPy method runs on this node,
+            # to save re-writing that code here:
+            return super().visit_BinOp(node)
+
+    def visit_BoolOp(self, node):
+        """Ensure And and Or are not simplified."""
+        # As above, must ensure child nodes are visited:
+        self.generic_visit(node)
+        # Fix the boolean operations to SymPy versions to ensure no simplification:
+        node_class = node.op.__class__
+        if node_class in self._bool_ops:
+            return ast.Call(func=ast.Name(id=self._bool_ops[node_class], ctx=ast.Load()), args=node.values, keywords=[self._evaluate_false_keyword])
+        else:
+            # An unknown type of boolean operation. Leave alone:
+            return node
+
+    def visit_UnaryOp(self, node):
+        """Ensure Not is not simplified."""
+        # As above, must ensure child nodes are visited:
+        self.generic_visit(node)
+        # Fix the boolean Not to the SymPy version to ensure no simplification:
+        if node.op.__class__  in [ast.Not, ast.Invert]:
+            return ast.Call(func=ast.Name(id="Not", ctx=ast.Load()), args=[node.operand], keywords=[self._evaluate_false_keyword])
+        else:
+            # Only interested in boolean Not for now; leave everything else alone:
             return node
 
 #    def visit(self, node):
