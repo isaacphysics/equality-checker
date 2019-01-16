@@ -561,7 +561,6 @@ class TestOthers(unittest.TestCase):
 
         self.assertTrue("error" in response, 'Expected "error" in response!')
         self.assertTrue("syntax_error" in response, 'Key "syntax_error" not in response!')
-        print(response["syntax_error"], type(response["syntax_error"]))
         self.assertTrue(response["syntax_error"] == "true", 'Expected "syntax_error" to be "true", got "{}"!'.format(response["syntax_error"]))
         print("   PASS   ".center(75, "#"))
 
