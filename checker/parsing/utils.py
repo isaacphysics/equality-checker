@@ -145,8 +145,8 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
 #    def visit(self, node):
 #        """Visit every node in the tree."""
 #        print(ast.dump(node))
-#        self.generic_visit(node)
-#        return node
+#        # MUST call super method to ensure tree is iterated over correctly!
+#        return super().visit(node)
 
 #####
 # Custom SymPy Parser Transformations:
