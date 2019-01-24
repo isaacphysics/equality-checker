@@ -143,6 +143,7 @@ def check(test_str, target_str, *, symbols=None, check_symbols=True, description
         if description is not None:
             print(description)
             print("=" * 50)
+        print("[LOGIC]")
 
     # If nothing to parse, fail. On server, this will be caught in check_endpoint()
     if (target_str == "") or (test_str == ""):
