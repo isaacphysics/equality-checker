@@ -57,8 +57,8 @@ def cleanup_string(string, *, reject_unsafe_input):
         # otherwise just swap the blacklisted characters for spaces and proceed.
         string = string.replace("?", " ")
     # Further cleanup, because some allowed characters are only allowed in certain circumstances:
-    string = re.sub(r'([^0-9])\.([^0-9])', '\g<1> \g<2>', string)  # Don't allow the . character between non-numbers
-    string = re.sub(r'(.?)\.([^0-9])', '\g<1> \g<2>', string)  # Don't allow the . character before a non-numeric character,
+    string = re.sub(r'([^0-9])\.([^0-9])', r'\g<1> \g<2>', string)  # Don't allow the . character between non-numbers
+    string = re.sub(r'(.?)\.([^0-9])', r'\g<1> \g<2>', string)  # Don't allow the . character before a non-numeric character,
     #                                                            but have to allow it after for cases like (.5) which are valid.
     string = string.replace("lambda", "lamda").replace("Lambda", "Lamda")  # We can't override the built-in keyword
     string = string.replace("__", " ")  # We don't need double underscores, exploits do
@@ -199,7 +199,7 @@ def parse_expr(expression_str, *, local_dict=None, hints=None):
     # FIXME: Avoid parsing issues with notation for Python longs.
     # E.g. the string '2L' should not be interpreted as "two stored as a long".
     # For now, just add a space to force desired behaviour:
-    expression_str = re.sub(r'([0-9])([lL])', '\g<1> \g<2>', expression_str)
+    expression_str = re.sub(r'([0-9])([lL])', r'\g<1> \g<2>', expression_str)
 
     try:
         code = sympy_parser.stringify_expr(expression_str, local_dict, _GLOBAL_DICT, _TRANSFORMS)
