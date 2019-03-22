@@ -1,4 +1,7 @@
 # equality-checker
+
+[![Build Status](https://travis-ci.com/isaacphysics/equality-checker.svg?branch=master)](https://travis-ci.com/isaacphysics/equality-checker)
+
 A not-quite-so-tiny-any-more server for testing the equivalence of two algebraic expressions using [SymPy](http://www.sympy.org/en/index.html).
 
 This project now uses Python 3. The last version using Python 2.7 was [v0.8.0](https://github.com/ucam-cl-dtg/equality-checker/releases/tag/v0.8.0).
