@@ -2,3 +2,4 @@ env
 .vagrant
 .idea/
 *.pyc
+.coverage
