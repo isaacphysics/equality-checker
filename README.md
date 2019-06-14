@@ -1,6 +1,7 @@
 # equality-checker
 
 [![Build Status](https://travis-ci.com/isaacphysics/equality-checker.svg?branch=master)](https://travis-ci.com/isaacphysics/equality-checker)
+[![codecov](https://codecov.io/gh/isaacphysics/equality-checker/branch/master/graph/badge.svg)](https://codecov.io/gh/isaacphysics/equality-checker)
 
 A not-quite-so-tiny-any-more server for testing the equivalence of two algebraic expressions using [SymPy](http://www.sympy.org/en/index.html).
 
