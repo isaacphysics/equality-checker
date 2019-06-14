@@ -90,7 +90,11 @@ def simplify_derivative(derivative):
     for f in functions:
         F = sympy.Function(str(f))(*variables)
         reverse[F] = f
-        d = d.subs(f, F)
+        # FIXME - a regression introduced in SymPy 1.2 onwards means that just
+        # trying to substitute before doing the derivative will not work, and
+        # you have to hack it to force substitution first instead:
+        # d = d.subs(f, F)
+        d = sympy.Derivative(d.args[0].subs(f, F), *d.args[1:])
     # Do any differentiation simplification possible:
     d = d.doit()
     # Undo swapping Symbols to Functions:
