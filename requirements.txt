@@ -5,6 +5,8 @@ numpy==1.15.4
 sympy==1.3
 gunicorn==19.9.0
 codecov==2.0.15
+pytest==4.6.3
+pytest-cov==2.7.1
 
 # Implicit dependencies,
 # (known working versions):
