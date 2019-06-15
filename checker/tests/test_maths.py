@@ -638,6 +638,29 @@ class TestSubroutines(unittest.TestCase):
         self.assertTrue(equal, "Expected expressions to be found numerically equal!")
         print("   PASS   ".center(75, "#"))
 
+    def test_numeric_complexify(self):
+        print("\n\n\n" + " Test if Complex-Number Sampling Works ".center(75, "#"))
+        from sympy import asec
+        test_expr = asec(0.1, evaluate=False)
+        target_expr = asec(0.1, evaluate=False)
+
+        print("Target expression: '{}'".format(target_expr))
+        print("Test expression: '{}'".format(test_expr))
+        equal = api.numeric_equality(test_expr, target_expr)
+
+        self.assertTrue(equal, "Expected expressions to be found numerically equal!")
+        print("   PASS   ".center(75, "#"))
+
+    def test_numeric_range_issue(self):
+        print("\n\n\n" + " Test if Numeric Range Checked ".center(75, "#"))
+        test_str = "1/x"
+        target_str = "1/x**20"
+        response = api.check(test_str, target_str)
+
+        self.assertTrue("error" in response, 'Expected "error" in response!')
+        self.assertTrue("Too Large Range" in response["error"], 'Expected warning about numeric range "{}"!'.format(response["error"]))
+        print("   PASS   ".center(75, "#"))
+
 
 #####
 # These tests check the error behaviour when invalid values are passed.

@@ -13,6 +13,9 @@ from .parsing import maths_parser, UnsafeInputException
 from sympy.utilities.lambdify import NUMPY_TRANSLATIONS
 NUMPY_TRANSLATIONS["zoo"] = "nan"
 
+# Silence NumPy warnings:
+numpy.seterr(all="ignore")
+
 
 __all__ = ["check"]
 
