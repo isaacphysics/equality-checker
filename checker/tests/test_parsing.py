@@ -2,14 +2,14 @@
 
 import unittest
 
-from checker.parsing import maths_parser as parsing
+from checker.parsing import maths_parser
 from checker import maths as api
 
 
 #####
 # Test parsing module functions:
 #####
-class TestParsing(unittest.TestCase):
+class TestMathsParsing(unittest.TestCase):
 
     def test_cleanup_string(self):
         print("\n\n\n" + " Test cleanup_string(...) Function ".center(75, "#"))
@@ -19,7 +19,7 @@ class TestParsing(unittest.TestCase):
 
         for s in strings:
             # These strings should not be left unmodified by cleanup_string:
-            clean_s = parsing.cleanup_string(s, reject_unsafe_input=False)
+            clean_s = maths_parser.cleanup_string(s, reject_unsafe_input=False)
             print("Unsafe input  : '{}'".format(s))
             print("Cleaner input : '{}'".format(clean_s))
             equal = (clean_s == s)
@@ -33,9 +33,9 @@ class TestParsing(unittest.TestCase):
         valid_symbols = ["x", "DeltaX", "Phi", "Omega", "alpha"]
         invalid_symbols = ["", "_trigs", "_logs", "sin()", "cos()", "_no_alphabet"]
 
-        test_valid_symbols = list(map(parsing.is_valid_symbol, valid_symbols))
+        test_valid_symbols = list(map(maths_parser.is_valid_symbol, valid_symbols))
         print("Valid symbols parsed:   {}".format(test_valid_symbols))
-        test_invalid_symbols = list(map(parsing.is_valid_symbol, invalid_symbols))
+        test_invalid_symbols = list(map(maths_parser.is_valid_symbol, invalid_symbols))
         print("Invalid symbols parsed: {}".format(test_invalid_symbols))
 
         self.assertTrue(all(test_valid_symbols), "Expected all valid symbols to pass!")
@@ -55,6 +55,18 @@ class TestParsing(unittest.TestCase):
         print("Expression has symbols:   {}".format(test_expr.free_symbols))
         self.assertTrue(test_expr.has(log), "Expected expression to contain a logarithm!")
         print("Long integer notation ignored successfully!")
+        print("   PASS   ".center(75, "#"))
+
+    def test_parse_hints(self):
+        print("\n\n\n" + " Test Parse Hints Used ".center(75, "#"))
+        test_str = "e**(i * pi)"
+        parse_hints = ["constant_pi", "constant_e", "imaginary_i"]
+
+        test_expr = maths_parser.parse_expr(test_str, hints=parse_hints)
+        print("Test expression: '{}'".format(test_expr))
+
+        self.assertTrue(len(test_expr.free_symbols) == 0, "Expected 'e', 'pi' and 'i' to parse specially!")
+        print("Expression has symbols:   {}".format(test_expr.free_symbols))
         print("   PASS   ".center(75, "#"))
 
 
