@@ -47,7 +47,7 @@ or, if something went wrong, an error like:
 To develop the Docker container as well:
 
 5. Install [Docker](https://www.docker.com/)
-7. Run `docker build -t ucamcldtg/equality-checker .`
+7. Run `docker build -t ucamcldtg/equality-checker --pull .`
 8. Test using `docker run -p 5000:5000 -it ucamcldtg/equality-checker` rather than running Python locally
 9. Optionally deploy to dockerhub: `docker push ucamcldtg/equality-checker` (requires authentication)
 
