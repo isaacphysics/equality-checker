@@ -2,7 +2,7 @@
 
 import unittest
 
-from checker.parsing import maths_parser
+from checker.parsing import maths_parser, logic_parser
 from checker import maths as api
 
 
@@ -67,6 +67,37 @@ class TestMathsParsing(unittest.TestCase):
 
         self.assertTrue(len(test_expr.free_symbols) == 0, "Expected 'e', 'pi' and 'i' to parse specially!")
         print("Expression has symbols:   {}".format(test_expr.free_symbols))
+        print("   PASS   ".center(75, "#"))
+
+    def test_unicode_substitution(self):
+        print("\n\n\n" + " Test cleanup_string(...) Swaps Unicode ".center(75, "#"))
+        maths_values = {
+            "\u00BD": "(1/2)",
+            "a\u00B2 + b\u00B9\u2070": "a**2 + b**10",
+            "v\u2081 + v\u2081\u2081": "v_1 + v_11",
+            "\u00D7": "*",
+            "\u00F7": "/",
+            "\u003C \u003E": "< >",
+            "\u2264 \u2265": "<= >=",
+        }
+        logic_values = {
+            "\u2227 \u2228": "& |",
+            "\u00AC": "~"
+        }
+
+        for unicode_str, replacement in maths_values.items():
+            clean_s = maths_parser.cleanup_string(unicode_str, reject_unsafe_input=False)
+            print("Unicode input: '{}'".format(unicode_str))
+            print("Equivalent   : '{}'".format(clean_s))
+            self.assertEqual(clean_s, replacement)
+            print(" - - - ")
+        for unicode_str, replacement in logic_values.items():
+            clean_s = logic_parser.cleanup_string(unicode_str, reject_unsafe_input=False)
+            print("Unicode input: '{}'".format(unicode_str))
+            print("Equivalent   : '{}'".format(clean_s))
+            self.assertEqual(clean_s, replacement)
+            print(" - - - ")
+        print("Unicode replaced with ASCII equivalents.")
         print("   PASS   ".center(75, "#"))
 
 
