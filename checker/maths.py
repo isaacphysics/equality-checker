@@ -293,7 +293,7 @@ def numeric_equality(test_expr, target_expr, *, complexify=False):
         raise NumericRangeException("A function has values not representable by 64 bit floats!")
 
     # If get any NaN's from the functions; things are looking bad:
-    if numpy.any(numpy.isnan(eval_f_target)) or numpy.any(numpy.isnan(eval_f_test)):
+    if not (numpy.all(numpy.isfinite(eval_f_target)) and numpy.all(numpy.isfinite(eval_f_test))):
         # If have not tried using complex numbers, try using those:
         if not complexify:
             print("A function appears to be undefined in the interval [0,1). Trying again with complex values!")
