@@ -149,5 +149,69 @@ class TestFundamentals(unittest.TestCase):
         print("   PASS   ".center(75, "#"))
 
 
+#####
+# These tests check the error behaviour when invalid values are passed.
+#####
+class TestErrorBehaviour(unittest.TestCase):
+
+    def test_blank_input(self):
+        print("\n\n\n" + " Test if Blank Input Detected ".center(75, "#"))
+        test_str = ""
+        target_str = "A"
+        response = api.check(test_str, target_str)
+
+        # Implicitly we're testing no unhandled exceptions.
+        self.assertTrue("error" in response, 'Expected "error" in response!')
+        print("   PASS   ".center(75, "#"))
+
+    def test_unsafe_input(self):
+        print("\n\n\n" + " Test if Unsafe Input Detected ".center(75, "#"))
+        test_str = "().__class__.__blah__"
+        target_str = "A"
+        response = api.check(test_str, target_str)
+
+        # Implicitly we're testing no unhandled exceptions.
+        self.assertTrue("error" in response, 'Expected "error" in response!')
+        print("   PASS   ".center(75, "#"))
+
+    def test_invalid_target(self):
+        print("\n\n\n" + " Test if Invalid Target Detected ".center(75, "#"))
+        test_str = "A & B"
+        target_str = "A & B & "
+        response = api.check(test_str, target_str)
+
+        # Implicitly we're testing no unhandled exceptions.
+        self.assertTrue("error" in response, 'Expected "error" in response!')
+        self.assertTrue("code" in response, 'Expected "code" in response!')
+        self.assertTrue(response["code"] == 400, 'Expected error "code" 400 in response, got "{}"!'.format(response["code"]))
+        print("   PASS   ".center(75, "#"))
+
+    def test_invalid_test_str(self):
+        print("\n\n\n" + " Test if Invalid Test Str Detected ".center(75, "#"))
+        test_str = "A & B & "
+        target_str = "A & B"
+        response = api.check(test_str, target_str)
+
+        # Implicitly we're testing no unhandled exceptions.
+        self.assertTrue("error" in response, 'Expected "error" in response!')
+        self.assertTrue("code" not in response, 'Expected "code" in response!')
+        print("   PASS   ".center(75, "#"))
+
+    def test_missing_symbols(self):
+        print("\n\n\n" + " Test if Missing Symbols Detected ".center(75, "#"))
+        test_str = "A"
+        target_str = "B"
+        response = api.check(test_str, target_str, check_symbols=True)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "false", 'Expected "equal" to be "false", got "{}"!'.format(response["equal"]))
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "{}"!'.format(response["equality_type"]))
+        self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "exact", got "{}"!'.format(response["equality_type"]))
+        self.assertTrue("incorrect_symbols" in response, 'Key "incorrect_symbols" not in response!')
+        print("   PASS   ".center(75, "#"))
+
+
 if __name__ == '__main__':
     unittest.main()

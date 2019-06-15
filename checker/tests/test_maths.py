@@ -639,5 +639,54 @@ class TestSubroutines(unittest.TestCase):
         print("   PASS   ".center(75, "#"))
 
 
+#####
+# These tests check the error behaviour when invalid values are passed.
+#####
+class TestErrorBehaviour(unittest.TestCase):
+
+    def test_blank_input(self):
+        print("\n\n\n" + " Test if Blank Input Detected ".center(75, "#"))
+        test_str = ""
+        target_str = "A"
+        response = api.check(test_str, target_str)
+
+        # Implicitly we're testing no unhandled exceptions.
+        self.assertTrue("error" in response, 'Expected "error" in response!')
+        print("   PASS   ".center(75, "#"))
+
+    def test_unsafe_input(self):
+        print("\n\n\n" + " Test if Unsafe Input Detected ".center(75, "#"))
+        test_str = "A @ B"
+        target_str = "A * B"
+        response = api.check(test_str, target_str)
+
+        # Implicitly we're testing no unhandled exceptions.
+        self.assertTrue("error" in response, 'Expected "error" in response!')
+        print("   PASS   ".center(75, "#"))
+
+    def test_invalid_target(self):
+        print("\n\n\n" + " Test if Invalid Target Detected ".center(75, "#"))
+        test_str = "A + B"
+        target_str = "A + B + "
+        response = api.check(test_str, target_str)
+
+        # Implicitly we're testing no unhandled exceptions.
+        self.assertTrue("error" in response, 'Expected "error" in response!')
+        self.assertTrue("code" in response, 'Expected "code" in response!')
+        self.assertTrue(response["code"] == 400, 'Expected error "code" 400 in response, got "{}"!'.format(response["code"]))
+        print("   PASS   ".center(75, "#"))
+
+    def test_invalid_test_str(self):
+        print("\n\n\n" + " Test if Invalid Test Str Detected ".center(75, "#"))
+        test_str = "A + B + "
+        target_str = "A + B"
+        response = api.check(test_str, target_str)
+
+        # Implicitly we're testing no unhandled exceptions.
+        self.assertTrue("error" in response, 'Expected "error" in response!')
+        self.assertTrue("code" not in response, 'Expected "code" in response!')
+        print("   PASS   ".center(75, "#"))
+
+
 if __name__ == '__main__':
     unittest.main()
