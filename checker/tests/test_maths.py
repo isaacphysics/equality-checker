@@ -710,6 +710,39 @@ class TestErrorBehaviour(unittest.TestCase):
         self.assertTrue("code" not in response, 'Expected "code" in response!')
         print("   PASS   ".center(75, "#"))
 
+    def test_missing_plus_minus(self):
+        print("\n\n\n" + " Test Missing Plus-Minus Sign ".center(75, "#"))
+        test_str = "A ± B"
+        target_str = "A + B"
+        response = api.check(test_str, target_str)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue(response["equal"] == "false", 'Expected "equal" to be "false", got "{}"!'.format(response["equal"]))
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "{}"!'.format(response["equality_type"]))
+        self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "{}"!'.format(response["equality_type"]))
+        print("   PASS   ".center(75, "#"))
+
+    def test_invalid_plus_minus_values(self):
+        print("\n\n\n" + " Test Invalid Plus-Minus Sign Result ".center(75, "#"))
+        test_str = "x ± 1"
+        target_str_1 = "x/(1 ± 1)"
+        target_str_2 = "x/(1 ± -1)"
+        response_1 = api.check(test_str, target_str_1)
+
+        self.assertTrue("error" in response_1, 'Expected "error" in response!')
+        self.assertTrue("case" in response_1, 'Key "case" not in response!')
+        self.assertTrue(response_1["case"] == "-", 'Unexpected "case": "{}"!'.format(response_1["case"]))
+        print("Negative case error correctly detected.")
+
+        response_2 = api.check(test_str, target_str_2)
+
+        self.assertTrue("error" in response_2, 'Expected "error" in response!')
+        self.assertTrue("case" in response_2, 'Key "case" not in response!')
+        self.assertTrue(response_2["case"] == "+", 'Unexpected "case": "{}"!'.format(response_2["case"]))
+        print("Positive case error correctly detected.")
+        print("   PASS   ".center(75, "#"))
+
 
 if __name__ == '__main__':
     unittest.main()
