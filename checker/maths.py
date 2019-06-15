@@ -90,15 +90,17 @@ def simplify_derivative(derivative):
     for f in functions:
         F = sympy.Function(str(f))(*variables)
         reverse[F] = f
-        # FIXME - a regression introduced in SymPy 1.2 onwards means that just
-        # trying to substitute before doing the derivative will not work, and
-        # you have to hack it to force substitution first instead:
+        # TODO - a change introduced in SymPy 1.2 onwards means that just
+        # trying to substitute before doing the derivative will not work,
+        # but perhaps since this is really a syntactic change rather than
+        # a semantic one, a "replace" is best anyway? Needs review.
         # d = d.subs(f, F)
-        d = sympy.Derivative(d.args[0].subs(f, F), *d.args[1:])
+        d = d.replace(f, F)
     # Do any differentiation simplification possible:
     d = d.doit()
     # Undo swapping Symbols to Functions:
-    d = d.subs(reverse)
+    # d = d.subs(reverse)
+    d = d.xreplace(reverse)
     # Then for logging print the simplification:
     if derivative != d:
         print("Simplified '{0}' to '{1}'!".format(derivative, d))
@@ -114,7 +116,9 @@ def simplify_derivatives(expr):
     """
     for derivative in expr.atoms(sympy.Derivative):
         d = simplify_derivative(derivative)
-        expr = expr.subs(derivative, d)
+        # TODO: See note in "simplify_derivative" about "replace" vs "subs":
+        # expr = expr.subs(derivative, d)
+        expr = expr.replace(derivative, d)
     return expr
 
 
