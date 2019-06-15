@@ -54,9 +54,9 @@ def process_unicode_chars(match_object):
             result += "<="
         elif name in ["GREATER-THAN OR EQUAL TO", "GREATER-THAN OR SLANTED EQUAL TO"]:
             result += ">="
-        elif name == "LOGICAL AND":
+        elif name in ["LOGICAL AND", "N-ARY LOGICAL AND"]:
             result += "&"
-        elif name == "LOGICAL OR":
+        elif name in ["LOGICAL OR", "N-ARY LOGICAL OR"]:
             result += "|"
         elif name == "NOT SIGN":
             result += "~"
