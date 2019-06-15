@@ -148,6 +148,14 @@ class TestFundamentals(unittest.TestCase):
         self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "{}"!'.format(response["equality_type"]))
         print("   PASS   ".center(75, "#"))
 
+    def test_no_simplification(self):
+        print("\n\n\n" + " Test No Simplification ".center(75, "#"))
+        test_str = "A and ~A"
+        result = api.parse_expression(test_str)
+
+        self.assertTrue(len(result.free_symbols) == 1, 'Expected variable in result!')
+        print("   PASS   ".center(75, "#"))
+
 
 #####
 # These tests check the error behaviour when invalid values are passed.
