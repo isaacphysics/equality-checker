@@ -110,7 +110,6 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
         ast.Or: "Or"
     }
 
-
     def visit_Call(self, node):
         """Ensure all function calls are 'evaluate=False'."""
         # Since we have overridden the visit method, we are now responsible for
@@ -181,7 +180,7 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
         # As above, must ensure child nodes are visited:
         self.generic_visit(node)
         # Fix the boolean Not to the SymPy version to ensure no simplification:
-        if node.op.__class__  in [ast.Not, ast.Invert]:
+        if node.op.__class__ in [ast.Not, ast.Invert]:
             return ast.Call(func=ast.Name(id="Not", ctx=ast.Load()), args=[node.operand], keywords=[self._evaluate_false_keyword])
         else:
             # Only interested in boolean Not for now; leave everything else alone:
@@ -192,6 +191,7 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
 #        print(ast.dump(node))
 #        # MUST call super method to ensure tree is iterated over correctly!
 #        return super().visit(node)
+
 
 #####
 # Custom SymPy Parser Transformations:
@@ -234,7 +234,8 @@ def auto_symbol(tokens, local_dict, global_dict):
     return result
 
 
-def split_symbols_implicit_precedence(tokens, local_dict, global_dict):
+# This transformation is left for reference, and excluded from coverage reports:
+def split_symbols_implicit_precedence(tokens, local_dict, global_dict):  # pragma: no cover
     """Replace the sympy builtin split_symbols with a version respecting implicit multiplcation.
 
        By replacing this we can better cope with expressions like 1/xyz being
