@@ -17,7 +17,7 @@ ALLOWED_CHARACTER_LIST = ["\x20",            # space
                           # "\x2E",            # full stop
                           "\x3C-\x3E",       # less than, equal, greater than
                           "\x41-\x5A",       # uppercase letters A-Z
-                          # "\x5E",            # caret symbol
+                          "\x5E",            # caret symbol
                           "\x61-\x7A",       # lowercase letters a-z
                           "\x7C",            # vertical line
                           "\x7E"]            # tilde
@@ -71,8 +71,8 @@ _TRANSFORMS = (sympy_parser.auto_number, auto_symbol, sympy_parser.split_symbols
 _GLOBAL_DICT = {
     "Symbol": sympy.Symbol,
     "Eq": sympy.Equivalent, "Implies": sympy.Implies,
-    "And": sympy.And, "Or": sympy.Or, "Not": sympy.Not,
-    "and": sympy.And, "or": sympy.Or, "not": sympy.Not,
+    "And": sympy.And, "Or": sympy.Or, "Not": sympy.Not, "Xor": sympy.Xor,
+    "and": sympy.And, "or": sympy.Or, "not": sympy.Not, "xor": sympy.Xor,
     "True": sympy.true, "False": sympy.false
 }
 

@@ -148,9 +148,9 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
             return node
 
     def visit_BinOp(self, node):
-        """Ensure Implies is not simplified."""
-        # "Implies", which overloads bit-shifting, mustn't get simplified:
+        """Ensure binary operations are modified before SymPy processes them."""
         node_class = node.op.__class__
+        # "Implies", which overloads bit-shifting, mustn't get simplified:
         if node_class in [ast.LShift, ast.RShift]:
             # As above, must ensure child nodes are visited:
             right = self.visit(node.right)
@@ -158,6 +158,11 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
             if node_class is ast.LShift:
                 left, right = right, left
             return ast.Call(func=ast.Name(id="Implies", ctx=ast.Load()), args=[left, right], keywords=[self._evaluate_false_keyword])
+        # "Xor" must be transformed from Bitwise to Boolean, and not simplified either:
+        elif node_class == ast.BitXor:
+            right = self.visit(node.right)
+            left = self.visit(node.left)
+            return ast.Call(func=ast.Name(id="Xor", ctx=ast.Load()), args=[left, right], keywords=[self._evaluate_false_keyword])
         else:
             # Otherwise we want ensure the parent SymPy method runs on this node,
             # to save re-writing that code here:
