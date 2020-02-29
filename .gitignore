@@ -3,3 +3,4 @@ env
 .idea/
 *.pyc
 .coverage
+.pytest_cache/
