@@ -188,7 +188,7 @@ def symbolic_equality(test_expr, target_expr):
         else:
             return False
     except NotImplementedError as e:
-        print("{0}: {1} - Can't check symbolic equality!".format(type(e).__name__, e.message.capitalize()))
+        print("{0}: {1} - Can't check symbolic equality!".format(type(e).__name__, str(e).capitalize()))
         return False
 
 
@@ -276,7 +276,7 @@ def numeric_equality(test_expr, target_expr, *, complexify=False):
         f_test = sympy.lambdify(test_variables, test_expr_n, lambdify_modules)
         eval_f_test = f_test(*domain_test)
     except OverflowError as e:
-        raise NumericRangeException(e.message)
+        raise NumericRangeException(e)
 
     # Output the function values at the sample points for debugging?
     # The actual domain arrays are probably too long to be worth ever printing.

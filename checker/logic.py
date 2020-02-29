@@ -78,7 +78,7 @@ def symbolic_equality(test_expr, target_expr):
         else:
             return False
     except NotImplementedError as e:
-        print("{0}: {1} - Can't check symbolic equality!".format(type(e).__name__, e.message.capitalize()))
+        print("{0}: {1} - Can't check symbolic equality!".format(type(e).__name__, str(e).capitalize()))
         return False
 
 
