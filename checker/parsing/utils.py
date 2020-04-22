@@ -122,10 +122,10 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
         # For now, blacklist those known to be problematic:
         _ignore_functions = ["Integer", "Float", "Symbol", "factorial", "sqrt", "Sqrt"]
         if node.func.id in _ignore_functions:
-            # print "\tIgnoring function: {}".format(node.func.id)
+            # print("\tIgnoring function: {}".format(node.func.id))
             pass
         else:
-            # print "\tModifying function: {}".format(node.func.id)
+            # print("\tModifying function: {}".format(node.func.id))
             node.keywords.append(self._evaluate_false_keyword)
         # We must return the node, modified or not:
         return node
