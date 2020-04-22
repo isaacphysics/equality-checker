@@ -120,7 +120,7 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
         # without their __new__() method raising a TypeError. There is probably
         # some underlying reason which we could take into account of.
         # For now, blacklist those known to be problematic:
-        _ignore_functions = ["Integer", "Float", "Symbol", "factorial", "sqrt", "Sqrt"]
+        _ignore_functions = ["Integer", "Float", "Symbol", "factorial"]
         if node.func.id in _ignore_functions:
             # print("\tIgnoring function: {}".format(node.func.id))
             pass
