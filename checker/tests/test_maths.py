@@ -207,6 +207,36 @@ class TestExactMatching(unittest.TestCase):
         self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "{}"!'.format(response["equality_type"]))
         print("   PASS   ".center(75, "#"))
 
+    def test_unary_minus_as_subtraction(self):
+        print("\n\n\n" + " Test Unary Minus is Consistent ".center(75, "#"))
+        test_str = "1 - 2*x"
+        target_str = "-2*x + 1"
+        symbols = None
+        response = api.check(test_str, target_str, symbols=symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "{}"!'.format(response["equal"]))
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "{}"!'.format(response["equality_type"]))
+        self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "{}"!'.format(response["equality_type"]))
+        print("   PASS   ".center(75, "#"))
+
+    def test_lone_unary_minus(self):
+        print("\n\n\n" + " Test Lone Unary Minus is Consistent ".center(75, "#"))
+        test_str = "-xyz"
+        target_str = "-(xyz)"
+        symbols = None
+        response = api.check(test_str, target_str, symbols=symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "{}"!'.format(response["equal"]))
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "{}"!'.format(response["equality_type"]))
+        self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "{}"!'.format(response["equality_type"]))
+        print("   PASS   ".center(75, "#"))
+
 
 #####
 # These tests check behavior around the standard sympy alegbraic rearrangement
