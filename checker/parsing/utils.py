@@ -105,6 +105,8 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
     """
 
     _evaluate_false_keyword = ast.keyword(arg='evaluate', value=ast.Name(id='False', ctx=ast.Load()))
+    _one = ast.Call(func=ast.Name(id='Integer', ctx=ast.Load()), args=[ast.Num(n=1)], keywords=[])
+    _minus_one = ast.UnaryOp(op=ast.USub(), operand=_one)
     _bool_ops = {
         ast.And: "And",
         ast.Or: "Or"
@@ -147,26 +149,78 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
             # An unknown type of relation. Leave alone:
             return node
 
+    def sympy_visit_BinOp(self, node):
+        """Convert some operators to SymPy equivalents.
+
+           This method is mostly copied from SymPy directly, but there is a fix
+           to the nesting of Mul not yet in the upstream!
+        """
+        if node.op.__class__ in self.operators:
+            sympy_class = self.operators[node.op.__class__]
+            right = self.visit(node.right)
+            left = self.visit(node.left)
+            if isinstance(node.left, ast.UnaryOp) and not isinstance(node.right, ast.UnaryOp) and sympy_class in ('Mul',):
+                left, right = right, left
+            if isinstance(node.op, ast.Sub):
+                right = ast.Call(
+                    func=ast.Name(id='Mul', ctx=ast.Load()),
+                    # Ensure Mul objects don't end up nested:
+                    args=self.flatten([self._minus_one, right], 'Mul'),
+                    keywords=[self._evaluate_false_keyword]
+                )
+            if isinstance(node.op, ast.Div):
+                if isinstance(node.left, ast.UnaryOp):
+                    if isinstance(node.right, ast.UnaryOp):
+                        left, right = right, left
+                    left = ast.Call(
+                        func=ast.Name(id='Pow', ctx=ast.Load()),
+                        args=[left, self._minus_one],
+                        keywords=[self._evaluate_false_keyword]
+                    )
+                else:
+                    right = ast.Call(
+                        func=ast.Name(id='Pow', ctx=ast.Load()),
+                        args=[right, self._minus_one],
+                        keywords=[self._evaluate_false_keyword]
+                    )
+
+            new_node = ast.Call(
+                    func=ast.Name(id=sympy_class, ctx=ast.Load()),
+                    args=[left, right],
+                    keywords=[self._evaluate_false_keyword]
+                )
+
+            if sympy_class in ('Add', 'Mul'):
+                # Denest Add or Mul as appropriate
+                new_node.args = self.flatten(new_node.args, sympy_class)
+
+            return new_node
+        return node
+
     def visit_BinOp(self, node):
-        """Ensure binary operations are modified before SymPy processes them."""
+        """Ensure bitwise operations are modified into SymPy operations.
+
+            This function also calls a SymPy function to convert Add, Sub, Mul
+            and Div into SymPy classes.
+        """
         node_class = node.op.__class__
         # "Implies", which overloads bit-shifting, mustn't get simplified:
         if node_class in [ast.LShift, ast.RShift]:
             # As above, must ensure child nodes are visited:
-            right = self.visit(node.right)
-            left = self.visit(node.left)
+            right = self.generic_visit(node.right)
+            left = self.generic_visit(node.left)
             if node_class is ast.LShift:
                 left, right = right, left
             return ast.Call(func=ast.Name(id="Implies", ctx=ast.Load()), args=[left, right], keywords=[self._evaluate_false_keyword])
         # "Xor" must be transformed from Bitwise to Boolean, and not simplified either:
         elif node_class == ast.BitXor:
-            right = self.visit(node.right)
-            left = self.visit(node.left)
+            right = self.generic_visit(node.right)
+            left = self.generic_visit(node.left)
             return ast.Call(func=ast.Name(id="Xor", ctx=ast.Load()), args=[left, right], keywords=[self._evaluate_false_keyword])
         else:
             # Otherwise we want ensure the parent SymPy method runs on this node,
             # to save re-writing that code here:
-            return super().visit_BinOp(node)
+            return self.sympy_visit_BinOp(node)
 
     def visit_BoolOp(self, node):
         """Ensure And and Or are not simplified."""
@@ -181,14 +235,22 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
             return node
 
     def visit_UnaryOp(self, node):
-        """Ensure Not is not simplified."""
+        """Ensure boolean Not is not simplified and unary minus is consistent."""
+        node_class = node.op.__class__
         # As above, must ensure child nodes are visited:
         self.generic_visit(node)
         # Fix the boolean Not to the SymPy version to ensure no simplification:
-        if node.op.__class__ in [ast.Not, ast.Invert]:
+        if node_class in [ast.Not, ast.Invert]:
             return ast.Call(func=ast.Name(id="Not", ctx=ast.Load()), args=[node.operand], keywords=[self._evaluate_false_keyword])
+        # Replace all uses of unary minus with multiplication by minus one for
+        # consistency reasons:
+        elif node_class in [ast.USub]:
+            return ast.Call(func=ast.Name(id='Mul', ctx=ast.Load()),
+                            # Ensure Mul objects don't end up nested:
+                            args=self.flatten([self._minus_one, node.operand], 'Mul'),
+                            keywords=[self._evaluate_false_keyword])
         else:
-            # Only interested in boolean Not for now; leave everything else alone:
+            # Only interested these; leave everything else alone:
             return node
 
 #    def visit(self, node):
