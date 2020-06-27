@@ -349,6 +349,36 @@ class TestSymbolicMatching(unittest.TestCase):
         self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "{}"!'.format(response["equality_type"]))
         print("   PASS   ".center(75, "#"))
 
+    def test_unary_minus_precedence(self):
+        print("\n\n\n" + " Test Unary Minus Binds Correctly ".center(75, "#"))
+        test_str = "-(x/-y)"
+        target_str = "x/y"
+        symbols = None
+        response = api.check(test_str, target_str, symbols=symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "{}"!'.format(response["equal"]))
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "{}"!'.format(response["equality_type"]))
+        self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "{}"!'.format(response["equality_type"]))
+        print("   PASS   ".center(75, "#"))
+
+    def test_unary_minus_fraction(self):
+        print("\n\n\n" + " Test Unary Minus in Fractions ".center(75, "#"))
+        test_str = "-x/-y"
+        target_str = "x/y"
+        symbols = None
+        response = api.check(test_str, target_str, symbols=symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "{}"!'.format(response["equal"]))
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "{}"!'.format(response["equality_type"]))
+        self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "{}"!'.format(response["equality_type"]))
+        print("   PASS   ".center(75, "#"))
+
 
 #####
 # These tests investigate the `check_symbols` feature.
