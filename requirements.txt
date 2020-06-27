@@ -1,17 +1,9 @@
 # Dependencies:
-Flask==1.0.3
+Flask==1.1.2
 mpmath==1.1.0
-numpy==1.16.4
-sympy==1.4
-gunicorn==19.9.0
-codecov==2.0.15
-pytest==4.6.3
-pytest-cov==2.7.1
-
-# Implicit dependencies,
-# (known working versions):
-click==7.0
-itsdangerous==1.1.0
-Jinja2==2.10.1
-MarkupSafe==1.1.1
-Werkzeug==0.15.4
+numpy==1.18.4
+sympy==1.6
+gunicorn==20.0.4
+codecov==2.1.7
+pytest==5.4.3
+pytest-cov==2.10.0
