@@ -255,9 +255,12 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
 
 #    def visit(self, node):
 #        """Visit every node in the tree."""
-#        print(ast.dump(node))
+#        before = ast.dump(node)
 #        # MUST call super method to ensure tree is iterated over correctly!
-#        return super().visit(node)
+#        node = super().visit(node)
+#        after = ast.dump(node)
+#        print("{}\n\n{}".format(before, after))
+#        return node
 
 
 #####
