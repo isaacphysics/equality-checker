@@ -84,6 +84,10 @@ class TestMathsParsing(unittest.TestCase):
             "\u2227 \u2228": "& |",
             "\u00AC": "~"
         }
+        greek_letters = {
+            "\u03C0": "pi",
+            "\u0398": "Theta",
+        }
 
         for unicode_str, replacement in maths_values.items():
             clean_s = maths_parser.cleanup_string(unicode_str, reject_unsafe_input=False)
@@ -97,6 +101,12 @@ class TestMathsParsing(unittest.TestCase):
             print("Equivalent   : '{}'".format(clean_s))
             self.assertEqual(clean_s, replacement)
             print(" - - - ")
+        for unicode_str, replacement in greek_letters.items():
+            clean_s = maths_parser.cleanup_string(unicode_str, reject_unsafe_input=False)
+            print("Unicode input: '{}'".format(unicode_str))
+            print("Equivalent   : '{}'".format(clean_s))
+            self.assertTrue(unicode_str not in clean_s)
+            self.assertTrue(replacement in clean_s)
         print("Unicode replaced with ASCII equivalents.")
         print("   PASS   ".center(75, "#"))
 

@@ -1,4 +1,5 @@
 import ast
+import re
 import tokenize
 import unicodedata
 
@@ -14,6 +15,8 @@ from sympy.core.basic import Basic
 _NUMBERS = {"ZERO": 0, "ONE": 1, "TWO": 2, "THREE": 3, "FOUR": 4, "FIVE": 5, "SIX": 6, "SEVEN": 7, "EIGHT": 8, "NINE": 9}
 _FRACTIONS = {"HALF": 2, "THIRD": 3, "QUARTER": 4, "FIFTH": 5, "SIXTH": 6, "SEVENTH": 7, "EIGHTH": 8, "NINTH": 9, "TENTH": 10}
 _FRACTIONS.update({"{}S".format(key): value for key, value in _FRACTIONS.items() if key != "HALF"})
+# Major uppercase and lowercase Greek letters, excluding 'GREEK SMALL LETTER FINAL SIGMA' (\u03C2):
+_GREEK_LETTERS_REGEX = r"[\u0391-\u03A9\u03B1-\u03C1\u03C3-\u03C9]"
 
 
 def process_unicode_chars(match_object):
@@ -60,6 +63,17 @@ def process_unicode_chars(match_object):
             result += "|"
         elif name == "NOT SIGN":
             result += "~"
+        elif re.match(_GREEK_LETTERS_REGEX, char):
+            # There are more Greek letters with names like the below than usually
+            # supported by maths systems. The regex is a quick way to filter by Unicode
+            # codepoint.
+            if name.startswith("GREEK CAPITAL LETTER"):
+                result += "({})".format(name.replace("GREEK CAPITAL LETTER ", "").title())
+            elif name.startswith("GREEK SMALL LETTER"):
+                result += "({})".format(name.replace("GREEK SMALL LETTER ", "").lower())
+            else:
+                # Something is wrong, skip character:
+                result += char
         else:
             result += char
 
