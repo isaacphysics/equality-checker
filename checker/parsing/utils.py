@@ -61,6 +61,8 @@ def process_unicode_chars(match_object):
             result += "&"
         elif name in ["LOGICAL OR", "N-ARY LOGICAL OR"]:
             result += "|"
+        elif name in ["XOR", "CIRCLED PLUS"]:
+            result += "^"
         elif name == "NOT SIGN":
             result += "~"
         elif re.match(_GREEK_LETTERS_REGEX, char):
