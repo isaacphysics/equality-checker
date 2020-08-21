@@ -315,8 +315,27 @@ def auto_symbol(tokens, local_dict, global_dict):
                 (tokenize.OP, ')'),
             ])
         else:
-            result.append((tokNum, tokVal))
+            result.append(tok)
 
+    return result
+
+
+def rewrite_inline_xor(tokens, local_dict, global_dict):
+    """Rewrite a new "xor" keyword into a bitwise XOR operation.
+
+       This relies on the EvaluateFalseTransformer above taking this bitwise
+       operation and changing it into the correct boolean operation later.
+       Any other solution would have to worry about precedence and brackets,
+       but this method leave Python to sort all of that out as it would normally.
+       Hacky, but simple and effective.
+    """
+    result = []
+    for tok in tokens:
+        tokNum, tokVal = tok
+        if tokNum == tokenize.NAME and tokVal and tokVal.lower() == "xor":
+            result.append((tokenize.OP, '^'))
+        else:
+            result.append(tok)
     return result
 
 

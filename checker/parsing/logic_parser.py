@@ -4,7 +4,7 @@ import sympy
 from sympy.parsing import sympy_parser
 
 from . import ParsingException, UnsafeInputException
-from .utils import process_unicode_chars, auto_symbol, evaluateFalse
+from .utils import process_unicode_chars, auto_symbol, rewrite_inline_xor, evaluateFalse
 
 __all__ = ["cleanup_string", "parse_expr"]
 
@@ -66,7 +66,7 @@ def cleanup_string(string, *, reject_unsafe_input):
 # These constants are needed to address some security issues.
 # We don't want to use the default transformations, and we need to use a
 # whitelist of functions the parser should allow to match.
-_TRANSFORMS = (sympy_parser.auto_number, auto_symbol, sympy_parser.split_symbols)
+_TRANSFORMS = (rewrite_inline_xor, sympy_parser.auto_number, auto_symbol, sympy_parser.split_symbols)
 
 _GLOBAL_DICT = {
     "Symbol": sympy.Symbol,
