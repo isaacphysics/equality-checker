@@ -1,0 +1,12 @@
+.pytest_cache
+__pycache__
+env
+.idea
+.git
+# Exclude the Git stuff except the current version and tags:
+!.git/refs/heads/*
+!.git/refs/tags/*
+
+*.pyc
+*.pyo
+.coveragerc
