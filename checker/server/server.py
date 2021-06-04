@@ -87,13 +87,14 @@ def check_maths():
     test_str = body.get("test")
     description = body.get("description")
 
-    if (target_str == "") or (test_str == ""):
+    _empty_input = (target_str == "") or (test_str == "")
+    _unprintable_input = not (target_str.isprintable() and test_str.isprintable())
+    if _empty_input or _unprintable_input:
         print("=" * 50)
         if description is not None:
             print(description)
             print("=" * 50)
-        print("ERROR: Empty string in request!")
-        print("Target: '{0}'\nTest: '{1}'".format(target_str, test_str))
+        print("ERROR: {} string in request!".format("Unprintable" if _unprintable_input else "Empty"))
         print("=" * 50)
         abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
 
@@ -135,13 +136,14 @@ def check_endpoint():
     test_str = body.get("test")
     description = body.get("description")
 
-    if (target_str == "") or (test_str == ""):
+    _empty_input = (target_str == "") or (test_str == "")
+    _unprintable_input = not (target_str.isprintable() and test_str.isprintable())
+    if _empty_input or _unprintable_input:
         print("=" * 50)
         if description is not None:
             print(description)
             print("=" * 50)
-        print("ERROR: Empty string in request!")
-        print("Target: '{0}'\nTest: '{1}'".format(target_str, test_str))
+        print("ERROR: {} string in request!".format("Unprintable" if _unprintable_input else "Empty"))
         print("=" * 50)
         abort(400)  # Probably want to just abort with a '400 BAD REQUEST'
 
