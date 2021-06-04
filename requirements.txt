@@ -2,7 +2,7 @@
 Flask==1.1.2
 mpmath==1.1.0
 numpy==1.18.4
-sympy==1.4
+sympy==1.8
 gunicorn==20.0.4
 codecov==2.1.7
 pytest==5.4.3

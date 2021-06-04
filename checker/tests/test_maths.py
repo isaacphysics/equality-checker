@@ -634,6 +634,18 @@ class TestOthers(unittest.TestCase):
 #        self.assertTrue(response["error"] == "Parsing Test Expression Failed.", "Error message not as expected '{}'.".format(response["error"]))
 #        print "   PASS   ".center(75, "#")
 
+    def test_known_sympy_rational_issue(self):
+        print("\n\n\n" + " Test SymPy Rational Issue ".center(75, "#"))
+        # This sometimes leads to:
+        # CoercionFailed: expected `Rational` object, got 1 - sqrt(2)/2
+        test_str = "sqrt(1 - 1/sqrt(2))/sqrt(2)"
+        target_str = "sqrt((2 - sqrt(2))/4)"
+        symbols = None
+        response = api.check(test_str, target_str, symbols=symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        print("   PASS   ".center(75, "#"))
+
 
 #####
 # These tests are for specific parts of the main checking code and may more easily
