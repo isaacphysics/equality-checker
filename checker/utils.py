@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class EqualityType(Enum):
     KNOWN = "known"
     NUMERIC = "numeric"
