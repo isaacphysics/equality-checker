@@ -1,6 +1,6 @@
 # equality-checker
 
-
+[![equality-checker Tests](https://github.com/isaacphysics/equality-checker/actions/workflows/python-app.yml/badge.svg?branch=master)](https://github.com/isaacphysics/equality-checker/actions/workflows/python-app.yml)
 [![codecov](https://codecov.io/gh/isaacphysics/equality-checker/branch/master/graph/badge.svg)](https://codecov.io/gh/isaacphysics/equality-checker)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/isaacphysics/equality-checker.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/isaacphysics/equality-checker/context:python)
 
