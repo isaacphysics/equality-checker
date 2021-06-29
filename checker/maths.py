@@ -180,7 +180,7 @@ def symbolic_equality(test_expr, target_expr):
     # it doesn't seem like much of an issue. Removing 'sympy.posify()' below will
     # stop this.
     try:
-        if sympy.simplify(sympy.posify(test_expr - target_expr)[0]) == 0:
+        if sympy.simplify(sympy.posify(test_expr - target_expr)[0], doit=False) == 0:
             print("Symbolic match.")
             print("INFO: Adding known pair ({0}, {1})".format(target_expr, test_expr))
             KNOWN_PAIRS[(target_expr, test_expr)] = EqualityType.SYMBOLIC

@@ -498,6 +498,20 @@ class TestDerivativeSupport(unittest.TestCase):
         self.assertTrue(response["equality_type"] == "symbolic", 'For these expressions, expected "equality_type" to be "symbolic", got "{}"!'.format(response["equality_type"]))
         print("   PASS   ".center(75, "#"))
 
+    def test_derivatives_not_removed(self):
+        print("\n\n\n" + " Test Derivatives Not Evaluated ".center(75, "#"))
+        test_str = "0"
+        target_str = "Derivative(y, x)"
+        response = api.check(test_str, target_str, check_symbols=False)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "false", 'Expected "equal" to be "false", got "{}"!'.format(response["equal"]))
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "{}"!'.format(response["equality_type"]))
+        self.assertTrue(response["equality_type"] == "numeric", 'For these expressions, expected "equality_type" to be "numeric", got "{}"!'.format(response["equality_type"]))
+        print("   PASS   ".center(75, "#"))
+
     def test_differential_equations(self):
         print("\n\n\n" + " Test Differential Equations ".center(75, "#"))
         api.SIMPLIFY_DERIVATIVES = True
