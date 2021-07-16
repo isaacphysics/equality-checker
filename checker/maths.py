@@ -65,6 +65,56 @@ def parse_expression(expression_str, *, local_dict=None):
         return None
 
 
+def get_valid_substitutions(substitutions):
+    """Filter a map of symbol names to replacements to remove invalid names."""
+    return {s: v for s, v in substitutions.items() if maths_parser.is_valid_symbol(s)}
+
+
+def make_substitutions(expression, substitutions):
+    """Substitute numeric values into a SymPy expression.
+
+       This method is designed to substitute in numeric values for parameterised
+       comparisons.
+        - 'expression' should be a SymPy expression with one or more free symbols.
+        - 'substitutions' should be a dictionary of string symbol name to a numeric
+           replacement value.
+    """
+    if substitutions is None or len(substitutions) == 0:
+        return expression
+
+    # Define an inner function to do the actual swapping efficiently, based on SymPy's xreplace:
+    def _mk_subs(expr, subs):
+        """Substitute a dictionary of values into a SymPy expression.
+
+            This function tracks changes and only modifies the expression
+            objects when strictly necessary. It is based on 'xreplace'.
+         """
+        if subs is None or len(subs) == 0:
+            return expr, False
+        if expr in subs:
+            return parse_expression(str(subs[expr])), True
+        args = []
+        changed = False
+        for a in expr.args:
+            # Only replace in cases where SymPy would allow replacement via xreplace:
+            _xreplace = getattr(a, '_xreplace', None)
+            if _xreplace is not None:
+                a_xr = _mk_subs(a, subs)
+                args.append(a_xr[0])
+                changed |= a_xr[1]
+            else:
+                args.append(a)
+        args = tuple(args)
+        if changed:
+            return expr.func(*args, evaluate=False), True
+        else:
+            return expr, False
+    # Then we use the inner function to do the substitution:
+    valid_subs = get_valid_substitutions(substitutions)
+    replacements = {sympy.Symbol(old): new for old, new in valid_subs.items()}
+    return _mk_subs(expression, replacements)[0]
+
+
 def simplify_derivative(derivative):
     """Simplify a sympy Derivative object.
 
@@ -407,7 +457,7 @@ def general_equality(test_expr, target_expr):
         return expr_equality(test_expr, target_expr)
 
 
-def plus_minus_checker(test_str, target_str, *, symbols=None, check_symbols=True):
+def plus_minus_checker(test_str, target_str, *, symbols=None, substitutions=None, check_symbols=True):
     """A checking function for inputs containing the ± character.
 
        Using the same arguments as the check(...) function, deals with multivalued
@@ -418,6 +468,8 @@ def plus_minus_checker(test_str, target_str, *, symbols=None, check_symbols=True
         - 'test_str' should be the untrusted string for sympy to parse.
         - 'target_str' should be the trusted string to parse and match against.
         - 'symbols' should be a comma separated list of symbols not to split.
+        - 'substitutions' should be a dictionary of parameter/symbol name to the
+           numeric value to be subsituted.
         - 'check_symbols' indicates whether to verfiy the symbols used in each
           expression are exactly the same or not; setting this to False will
           allow symbols which cancel out to be included (probably don't want this
@@ -437,7 +489,8 @@ def plus_minus_checker(test_str, target_str, *, symbols=None, check_symbols=True
             )
     print("[[Multi-Valued: Case Using +ve Value]]")
     plus = check(test_str.replace('±', '+'), target_str.replace('±', '+'),
-                 symbols=symbols, check_symbols=check_symbols, _quiet=True)
+                 symbols=symbols, substitutions=substitutions,
+                 check_symbols=check_symbols, _quiet=True)
     if "error" in plus:
         # The dictionary is mostly correct, but the target and test strings are wrong:
         plus["target"] = target_str
@@ -447,7 +500,8 @@ def plus_minus_checker(test_str, target_str, *, symbols=None, check_symbols=True
         return plus
     print("[[Multi-Valued: Case Using -ve Value]]")
     minus = check(test_str.replace('±', '-'), target_str.replace('±', '-'),
-                  symbols=symbols, check_symbols=check_symbols, _quiet=True)
+                  symbols=symbols, substitutions=substitutions,
+                  check_symbols=check_symbols, _quiet=True)
     if "error" in minus:
         # The dictionary is mostly correct, but the target and test strings are wrong:
         minus["target"] = target_str
@@ -471,8 +525,8 @@ def plus_minus_checker(test_str, target_str, *, symbols=None, check_symbols=True
             )
 
 
-def check(test_str, target_str, *, symbols=None, check_symbols=True, description=None,
-          _quiet=False):
+def check(test_str, target_str, *, symbols=None, substitutions=None, check_symbols=True,
+          description=None, _quiet=False):
     """The main checking function, calls each of the equality checking functions as required.
 
        Returns a dict describing the equality; with important keys being 'equal',
@@ -483,6 +537,9 @@ def check(test_str, target_str, *, symbols=None, check_symbols=True, description
         - 'target_str' should be the trusted string to parse and match against.
         - 'symbols' should be a string list or comma separated string of symbols
            not to split during parsing.
+        - 'substitutions' should be a dictionary of parameter/symbol name to the
+           numeric value to be subsituted. Passing this argument may cause unavoidable
+           simplification of provided values.
         - 'check_symbols' indicates whether to verfiy the symbols used in each
           expression are exactly the same or not; setting this to False will
           allow symbols which cancel out to be included (probably don't want this
@@ -529,8 +586,11 @@ def check(test_str, target_str, *, symbols=None, check_symbols=True, description
     print("Test string: '{}'".format(test_str))
 
     # If the input contains a plus-or-minus sign, we need to do things differently:
-    if (('±' in target_str) or ('±' in test_str)):
-        return plus_minus_checker(test_str, target_str, symbols=symbols, check_symbols=check_symbols)
+    if ('±' in target_str) or ('±' in test_str):
+        return plus_minus_checker(test_str, target_str,
+                                  symbols=symbols,
+                                  substitutions=substitutions,
+                                  check_symbols=check_symbols)
 
     # Prevent splitting of known symbols (symbols with underscores are left alone by default anyway):
     local_dict = {}
@@ -565,6 +625,12 @@ def check(test_str, target_str, *, symbols=None, check_symbols=True, description
         result["error"] = "Parsing Test Expression Failed!"
         result["syntax_error"] = str(True).lower()
         return result
+
+    # Make any parameter substitutions:
+    if substitutions is not None:
+        result["substitutions"] = get_valid_substitutions(substitutions)
+        target_expr = make_substitutions(target_expr, substitutions)
+        test_expr = make_substitutions(test_expr, substitutions)
 
     result["parsed_target"] = str(target_expr)
     result["parsed_test"] = str(test_expr)

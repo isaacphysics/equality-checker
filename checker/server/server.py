@@ -100,6 +100,7 @@ def check_maths():
 
     symbols = body.get("symbols")
     check_symbols = str(body.get("check_symbols", "true")).lower() == "true"
+    substitutions = body.get("substitutions")
 
     # To reduce computation issues on single-threaded server, institute a timeout
     # for requests. If it takes longer than this to process, return an error.
@@ -107,7 +108,11 @@ def check_maths():
     # a value for MAX_REQUEST_COMPUTATION_TIME.
     try:
         with TimeoutProtection(MAX_REQUEST_COMPUTATION_TIME):
-            response_dict = maths.check(test_str, target_str, symbols=symbols, check_symbols=check_symbols, description=description)
+            response_dict = maths.check(test_str, target_str,
+                                        symbols=symbols,
+                                        substitutions=substitutions,
+                                        check_symbols=check_symbols,
+                                        description=description)
             return jsonify(**response_dict)
     except TimeoutException as e:
         print("ERROR: {} - Request took too long to process, aborting!".format(type(e).__name__))
