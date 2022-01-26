@@ -171,6 +171,18 @@ class TestFundamentals(unittest.TestCase):
         self.assertTrue(len(result.free_symbols) == 1, 'Expected variable in result!')
         print("   PASS   ".center(75, "#"))
 
+    def test_true_and_false(self):
+        print("\n\n\n" + " Test True and False ".center(75, "#"))
+        test_str = "not False"
+        target_str = "True"
+        symbols = None
+        response = api.check(test_str, target_str, symbols=symbols)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "{}"!'.format(response["equal"]))
+        print("   PASS   ".center(75, "#"))
+
 
 #####
 # These tests check the error behaviour when invalid values are passed.

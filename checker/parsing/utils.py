@@ -127,6 +127,10 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
         ast.And: "And",
         ast.Or: "Or"
     }
+    _bool_values = {
+        True: ast.Name(id='True', ctx=ast.Load()),
+        False: ast.Name(id='False', ctx=ast.Load())
+    }
 
     def visit_Call(self, node):
         """Ensure all function calls are 'evaluate=False'."""
@@ -147,6 +151,13 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
             node.keywords.append(self._evaluate_false_keyword)
         # We must return the node, modified or not:
         return node
+
+    def visit_NameConstant(self, node):
+        """Ensure all function calls are 'evaluate=False'."""
+        # As above, must ensure child nodes are visited:
+        self.generic_visit(node)
+        # Replace the built-in True with a name that we can override:
+        return self._bool_values[node.value]
 
     def visit_Compare(self, node):
         """Ensure all comparisons use sympy classes with 'evaluate=False'."""
