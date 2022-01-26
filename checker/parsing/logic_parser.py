@@ -4,7 +4,7 @@ import sympy
 from sympy.parsing import sympy_parser
 
 from . import ParsingException, UnsafeInputException
-from .utils import process_unicode_chars, auto_symbol, rewrite_inline_xor, evaluateFalse
+from .utils import process_unicode_chars, auto_symbol, integer_to_bool, rewrite_inline_xor, evaluateFalse
 
 __all__ = ["cleanup_string", "parse_expr"]
 
@@ -16,6 +16,7 @@ ALLOWED_CHARACTER_LIST = ["\x20",            # space
                           # "\x2A",            # plus
                           # "\x2E",            # full stop
                           "\x3C-\x3E",       # less than, equal, greater than
+                          "\x30-\x31",       # numbers 0 and 1
                           "\x41-\x5A",       # uppercase letters A-Z
                           "\x5E",            # caret symbol
                           "\x61-\x7A",       # lowercase letters a-z
@@ -66,7 +67,7 @@ def cleanup_string(string, *, reject_unsafe_input):
 # These constants are needed to address some security issues.
 # We don't want to use the default transformations, and we need to use a
 # whitelist of functions the parser should allow to match.
-_TRANSFORMS = (rewrite_inline_xor, sympy_parser.auto_number, auto_symbol, sympy_parser.split_symbols)
+_TRANSFORMS = (rewrite_inline_xor, integer_to_bool, sympy_parser.auto_number, auto_symbol, sympy_parser.split_symbols)
 
 _GLOBAL_DICT = {
     "Symbol": sympy.Symbol,

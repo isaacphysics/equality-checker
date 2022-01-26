@@ -351,6 +351,27 @@ def rewrite_inline_xor(tokens, local_dict, global_dict):
     return result
 
 
+def integer_to_bool(tokens, local_dict, global_dict):
+    """
+    Converts 0 and 1 to use SymPy boolean values.
+
+    """
+    result = []
+    _integerMap = {
+        "0": "False",
+        "1": "True"
+    }
+
+    for tok in tokens:
+        tokNum, tokVal = tok
+        if tokNum == tokenize.NUMBER and tokVal and tokVal in ["0", "1"]:
+            result.append((tokenize.NAME, _integerMap[tokVal]))
+        else:
+            result.append(tok)
+
+    return result
+
+
 # This transformation is left for reference, and excluded from coverage reports:
 def split_symbols_implicit_precedence(tokens, local_dict, global_dict):  # pragma: no cover
     """Replace the sympy builtin split_symbols with a version respecting implicit multiplcation.
