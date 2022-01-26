@@ -286,7 +286,8 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
 #        # MUST call super method to ensure tree is iterated over correctly!
 #        node = super().visit(node)
 #        after = ast.dump(node)
-#        print("{}\n\n{}".format(before, after))
+#        print(node.__class__)
+#        print("{}\n==>\n{}\n\n".format(before, after))
 #        return node
 
 
