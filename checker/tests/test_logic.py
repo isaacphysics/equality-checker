@@ -31,7 +31,7 @@ class TestFundamentals(unittest.TestCase):
     def test_and(self):
         print("\n\n\n" + " Test if AND (&) Works ".center(75, "#"))
         test_str = "P & Q"
-        target_str = "P & Q"
+        target_str = "Q & P"
         symbols = None
         response = api.check(test_str, target_str, symbols=symbols)
 
@@ -46,7 +46,7 @@ class TestFundamentals(unittest.TestCase):
     def test_or(self):
         print("\n\n\n" + " Test if OR (|) Works ".center(75, "#"))
         test_str = "P | Q"
-        target_str = "P | Q"
+        target_str = "Q | P"
         symbols = None
         response = api.check(test_str, target_str, symbols=symbols)
 

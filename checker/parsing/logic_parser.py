@@ -74,7 +74,8 @@ _GLOBAL_DICT = {
     "Eq": sympy.Equivalent, "Implies": sympy.Implies,
     "And": sympy.And, "Or": sympy.Or, "Not": sympy.Not, "Xor": sympy.Xor,
     "and": sympy.And, "or": sympy.Or, "not": sympy.Not, "xor": sympy.Xor,
-    "True": sympy.true, "False": sympy.false
+    "True": sympy.logic.boolalg.BooleanTrue, "False": sympy.logic.boolalg.BooleanFalse,
+    "true": sympy.logic.boolalg.BooleanTrue, "false": sympy.logic.boolalg.BooleanFalse
 }
 
 _PARSE_HINTS = {}

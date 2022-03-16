@@ -120,7 +120,7 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
        future proof!
     """
 
-    _evaluate_false_keyword = ast.keyword(arg='evaluate', value=ast.Name(id='False', ctx=ast.Load()))
+    _evaluate_false_keyword = ast.keyword(arg='evaluate', value=ast.NameConstant(value=False, ctx=ast.Load()))
     _one = ast.Call(func=ast.Name(id='Integer', ctx=ast.Load()), args=[ast.Num(n=1)], keywords=[])
     _minus_one = ast.UnaryOp(op=ast.USub(), operand=_one)
     _bool_ops = {
@@ -128,65 +128,55 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
         ast.Or: "Or"
     }
     _bool_values = {
-        True: ast.Name(id='True', ctx=ast.Load()),
-        False: ast.Name(id='False', ctx=ast.Load())
+        True: ast.Call(func=ast.Name(id="true", ctx=ast.Load()), args=[], keywords=[]),
+        False: ast.Call(func=ast.Name(id="false", ctx=ast.Load()), args=[], keywords=[])
     }
+    _ignore_functions = ["Integer", "Float", "Symbol", "factorial"]
 
     def visit_Call(self, node):
         """Ensure all function calls are 'evaluate=False'."""
-        # Since we have overridden the visit method, we are now responsible for
-        # ensuring all child nodes are visited too. This is done most simply by
-        # calling generic_visit(...) on ourself:
-        self.generic_visit(node)
         # FIXME: Some functions cannot accept "evaluate=False" as an argument
         # without their __new__() method raising a TypeError. There is probably
         # some underlying reason which we could take into account of.
-        # For now, blacklist those known to be problematic:
-        _ignore_functions = ["Integer", "Float", "Symbol", "factorial"]
-        if node.func.id in _ignore_functions:
-            # print("\tIgnoring function: {}".format(node.func.id))
-            pass
-        else:
-            # print("\tModifying function: {}".format(node.func.id))
-            node.keywords.append(self._evaluate_false_keyword)
-        # We must return the node, modified or not:
-        return node
+        # For now, blacklist those known to be problematic (in self._ignore_functions)
+        new_node = self.generic_visit(node)
+        if isinstance(node.func, ast.Name) and node.func.id not in self._ignore_functions:
+            new_node.keywords.append(ast.keyword(arg='evaluate', value=ast.NameConstant(value=False, ctx=ast.Load())))
+        return new_node
 
     def visit_NameConstant(self, node):
-        """Ensure all function calls are 'evaluate=False'."""
-        # As above, must ensure child nodes are visited:
-        self.generic_visit(node)
-        # Replace the built-in True with a name that we can override:
-        return self._bool_values[node.value]
+        if node.value in [True, False]:
+            return self._bool_values[node.value]
+        else:
+            return self.generic_visit(node)
 
     def visit_Compare(self, node):
         """Ensure all comparisons use sympy classes with 'evaluate=False'."""
-        # Can't cope with comparing multiple inequalities:
-        if len(node.comparators) > 1:
-            raise TypeError("Cannot parse nested inequalities!")
         # As above, must ensure child nodes are visited:
-        self.generic_visit(node)
+        new_node = self.generic_visit(node)
+        # Can't cope with comparing multiple inequalities:
+        if len(new_node.comparators) > 1:
+            raise TypeError("Cannot parse nested inequalities!")
         # Use the custom Equals class if equality, otherwise swap with a know relation:
-        operator_class = node.ops[0].__class__
-        if isinstance(node.ops[0], ast.Eq):
-            return ast.Call(func=ast.Name(id='Eq', ctx=ast.Load()), args=[node.left, node.comparators[0]], keywords=[self._evaluate_false_keyword])
+        operator_class = new_node.ops[0].__class__
+        if isinstance(new_node.ops[0], ast.Eq):
+            return ast.Call(func=ast.Name(id='Eq', ctx=ast.Load()), args=[new_node.left, node.comparators[0]], keywords=[self._evaluate_false_keyword])
         elif operator_class in RELATIONS:
-            return ast.Call(func=ast.Name(id='Rel', ctx=ast.Load()), args=[node.left, node.comparators[0], ast.Str(RELATIONS[operator_class])], keywords=[self._evaluate_false_keyword])
+            return ast.Call(func=ast.Name(id='Rel', ctx=ast.Load()), args=[new_node.left, node.comparators[0], ast.Str(RELATIONS[operator_class])], keywords=[self._evaluate_false_keyword])
         else:
             # An unknown type of relation. Leave alone:
-            return node
+            return new_node
 
     def sympy_visit_BinOp(self, node):
         """Convert some operators to SymPy equivalents.
 
-           This method is mostly copied from SymPy directly, but there is a fix
-           to the nesting of Mul not yet in the upstream!
+           This method is adapted from that of sympy 1.8,
         """
         if node.op.__class__ in self.operators:
             sympy_class = self.operators[node.op.__class__]
             right = self.visit(node.right)
             left = self.visit(node.left)
-            if isinstance(node.left, ast.UnaryOp) and not isinstance(node.right, ast.UnaryOp) and sympy_class in ('Mul',):
+            if isinstance(node.left, ast.UnaryOp) and not isinstance(node.right, ast.UnaryOp) and sympy_class in ('Mul', ):
                 left, right = right, left
             if isinstance(node.op, ast.Sub):
                 right = ast.Call(
@@ -222,6 +212,7 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
                 new_node.args = self.flatten(new_node.args, sympy_class)
 
             return new_node
+        
         return node
 
     def visit_BinOp(self, node):
@@ -252,43 +243,45 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
     def visit_BoolOp(self, node):
         """Ensure And and Or are not simplified."""
         # As above, must ensure child nodes are visited:
-        self.generic_visit(node)
+        new_node = self.generic_visit(node)
         # Fix the boolean operations to SymPy versions to ensure no simplification:
-        node_class = node.op.__class__
+        node_class = new_node.op.__class__
         if node_class in self._bool_ops:
-            return ast.Call(func=ast.Name(id=self._bool_ops[node_class], ctx=ast.Load()), args=node.values, keywords=[self._evaluate_false_keyword])
+            return ast.Call(func=ast.Name(id=self._bool_ops[node_class], ctx=ast.Load()), args=new_node.values, keywords=[self._evaluate_false_keyword])
         else:
             # An unknown type of boolean operation. Leave alone:
             return node
 
     def visit_UnaryOp(self, node):
         """Ensure boolean Not is not simplified and unary minus is consistent."""
-        node_class = node.op.__class__
         # As above, must ensure child nodes are visited:
-        self.generic_visit(node)
+        new_node = self.generic_visit(node)
+        node_class = new_node.op.__class__
         # Fix the boolean Not to the SymPy version to ensure no simplification:
         if node_class in [ast.Not, ast.Invert]:
-            return ast.Call(func=ast.Name(id="Not", ctx=ast.Load()), args=[node.operand], keywords=[self._evaluate_false_keyword])
+            return ast.Call(func=ast.Name(id="Not", ctx=ast.Load()), args=[new_node.operand], keywords=[self._evaluate_false_keyword])
+        # FIXME: We want basic expressions with unary minus to be exact match if possible (see commented tests in
+        #  test_maths.py)
         # Replace all uses of unary minus with multiplication by minus one for
         # consistency reasons:
         elif node_class in [ast.USub]:
             return ast.Call(func=ast.Name(id='Mul', ctx=ast.Load()),
                             # Ensure Mul objects don't end up nested:
-                            args=self.flatten([self._minus_one, node.operand], 'Mul'),
+                            args=self.flatten([self._minus_one, new_node.operand], 'Mul'),
                             keywords=[self._evaluate_false_keyword])
         else:
             # Only interested these; leave everything else alone:
-            return node
+            return new_node
 
-#    def visit(self, node):
-#        """Visit every node in the tree."""
-#        before = ast.dump(node)
-#        # MUST call super method to ensure tree is iterated over correctly!
-#        node = super().visit(node)
-#        after = ast.dump(node)
-#        print(node.__class__)
-#        print("{}\n==>\n{}\n\n".format(before, after))
-#        return node
+    # def visit(self, node):
+    #     """Visit every node in the tree."""
+    #     before = ast.dump(node)
+    #     # MUST call super method to ensure tree is iterated over correctly!
+    #     node = super().visit(node)
+    #     after = ast.dump(node)
+    #     print(node.__class__)
+    #     print("{}\n==>\n{}\n\n".format(before, after))
+    #     return node
 
 
 #####
@@ -338,7 +331,7 @@ def rewrite_inline_xor(tokens, local_dict, global_dict):
        This relies on the EvaluateFalseTransformer above taking this bitwise
        operation and changing it into the correct boolean operation later.
        Any other solution would have to worry about precedence and brackets,
-       but this method leave Python to sort all of that out as it would normally.
+       but this method leaves Python to sort all of that out as it would normally.
        Hacky, but simple and effective.
     """
     result = []
