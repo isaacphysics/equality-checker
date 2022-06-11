@@ -82,7 +82,8 @@ class TestMathsParsing(unittest.TestCase):
         }
         logic_values = {
             "\u2227 \u2228": "& |",
-            "\u00AC": "~"
+            "\u00AC": "~",
+            "\u22BB": "^",
         }
         greek_letters = {
             "\u03C0": "pi",
