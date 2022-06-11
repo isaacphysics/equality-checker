@@ -10,7 +10,7 @@ This project now uses Python 3. The last version using Python 2.7 was [v0.8.0](h
 
 ### Development Setup Instructions
 #### Simple Setup
-1. Install [Python 3.7](https://www.python.org/)
+1. Install [Python 3.10](https://www.python.org/)
 2. Clone this repository
 3. Run `pip install -r requirements.txt`
 4. Run `python server\api.py`
