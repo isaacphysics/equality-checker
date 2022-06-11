@@ -141,7 +141,7 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
         # FIXME: Some functions cannot accept "evaluate=False" as an argument
         # without their __new__() method raising a TypeError. There is probably
         # some underlying reason which we could take into account of.
-        # For now, blacklist those known to be problematic:
+        # For now, ignore those known to be problematic:
         _ignore_functions = ["Integer", "Float", "Symbol", "factorial"]
         if node.func.id in _ignore_functions:
             # print("\tIgnoring function: {}".format(node.func.id))
@@ -166,7 +166,7 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
             raise TypeError("Cannot parse nested inequalities!")
         # As above, must ensure child nodes are visited:
         self.generic_visit(node)
-        # Use the custom Equals class if equality, otherwise swap with a know relation:
+        # Use the custom Equals class if equality, otherwise swap with a known relation:
         operator_class = node.ops[0].__class__
         if isinstance(node.ops[0], ast.Eq):
             return ast.Call(func=ast.Name(id='Eq', ctx=ast.Load()), args=[node.left, node.comparators[0]], keywords=[self._evaluate_false_keyword])
