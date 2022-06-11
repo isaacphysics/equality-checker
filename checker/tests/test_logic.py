@@ -183,6 +183,32 @@ class TestFundamentals(unittest.TestCase):
         self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "{}"!'.format(response["equal"]))
         print("   PASS   ".center(75, "#"))
 
+    def test_boolean_keyword_precedence(self):
+        print("\n\n\n" + " Test Boolean Keyword Precedence ".center(75, "#"))
+        test_str = "A == B or C"
+        target_str = "A == (B or C)"
+        response = api.check(test_str, target_str)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "{}"!'.format(response["equal"]))
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "{}"!'.format(response["equality_type"]))
+        self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "{}"!'.format(response["equality_type"]))
+        print("   PASS   ".center(75, "#"))
+
+    def test_boolean_and_bitwise(self):
+        print("\n\n\n" + " Test Boolean And Bitwise ".center(75, "#"))
+        test_str = "A and B or C xor D"
+        target_str = "D ^ C | B & A"
+        response = api.check(test_str, target_str)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "{}"!'.format(response["equal"]))
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "{}"!'.format(response["equality_type"]))
+        self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "{}"!'.format(response["equality_type"]))
+        print("   PASS   ".center(75, "#"))
+
 
 #####
 # These tests check the error behaviour when invalid values are passed.
