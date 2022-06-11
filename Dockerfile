@@ -1,4 +1,6 @@
-FROM python:3.7-slim
+FROM python:3.10-slim
+
+RUN ln -sf /bin/bash /bin/sh
 
 # To allow the Unicode +- sign to be printed, set IO encoding:
 ENV PYTHONIOENCODING UTF-8
@@ -13,7 +15,5 @@ COPY requirements.txt /usr/src/app/
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /usr/src/app
-
-RUN ln -sf /bin/bash /bin/sh
 
 CMD gunicorn --config=checker/server/gunicorn_conf.py checker.server:app

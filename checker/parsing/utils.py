@@ -120,7 +120,7 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
        future proof!
     """
 
-    _evaluate_false_keyword = ast.keyword(arg='evaluate', value=ast.Name(id='False', ctx=ast.Load()))
+    _evaluate_false_keyword = ast.keyword(arg='evaluate', value=ast.NameConstant(value=False, ctx=ast.Load()))
     _one = ast.Call(func=ast.Name(id='Integer', ctx=ast.Load()), args=[ast.Num(n=1)], keywords=[])
     _minus_one = ast.UnaryOp(op=ast.USub(), operand=_one)
     _bool_ops = {
@@ -128,8 +128,11 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
         ast.Or: "Or"
     }
     _bool_values = {
-        True: ast.Name(id='True', ctx=ast.Load()),
-        False: ast.Name(id='False', ctx=ast.Load())
+        # CPython 3.8 and later no longer allow overridding of "True" and "False" as names,
+        # so we must use "true" and "false" instead.
+        # https://github.com/python/cpython/blob/3.8/Python/ast.c#L28-L39
+        True: ast.Name(id="true", ctx=ast.Load()),
+        False: ast.Name(id="false", ctx=ast.Load())
     }
 
     def visit_Call(self, node):
@@ -152,12 +155,15 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
         # We must return the node, modified or not:
         return node
 
-    def visit_NameConstant(self, node):
-        """Ensure all function calls are 'evaluate=False'."""
+    def visit_Constant(self, node):
+        """Ensure boolean constants can be sympy classes if needed."""
         # As above, must ensure child nodes are visited:
         self.generic_visit(node)
-        # Replace the built-in True with a name that we can override:
-        return self._bool_values[node.value]
+        # Replace the built-in True/False with names we can override if needed:
+        if node.value in self._bool_values:
+            return self._bool_values[node.value]
+        else:
+            return node
 
     def visit_Compare(self, node):
         """Ensure all comparisons use sympy classes with 'evaluate=False'."""
