@@ -4,7 +4,7 @@ import sympy
 from sympy.parsing import sympy_parser
 
 from . import ParsingException, UnsafeInputException
-from .utils import process_unicode_chars, auto_symbol, integer_to_bool, rewrite_inline_xor, evaluateFalse
+from .utils import process_unicode_chars, auto_symbol, fix_booleans, evaluateFalse
 
 __all__ = ["cleanup_string", "parse_expr"]
 
@@ -67,14 +67,18 @@ def cleanup_string(string, *, reject_unsafe_input):
 # These constants are needed to address some security issues.
 # We don't want to use the default transformations, and we need to use a
 # whitelist of functions the parser should allow to match.
-_TRANSFORMS = (rewrite_inline_xor, integer_to_bool, sympy_parser.auto_number, auto_symbol, sympy_parser.split_symbols)
+_TRANSFORMS = (fix_booleans, sympy_parser.auto_number, auto_symbol, sympy_parser.split_symbols)
 
 _GLOBAL_DICT = {
     "Symbol": sympy.Symbol,
     "Eq": sympy.Equivalent, "Implies": sympy.Implies,
     "And": sympy.And, "Or": sympy.Or, "Not": sympy.Not, "Xor": sympy.Xor,
     "and": sympy.And, "or": sympy.Or, "not": sympy.Not, "xor": sympy.Xor,
-    "True": sympy.true, "False": sympy.false
+    # These catch user input containing "True" or "False", but we cannot use them
+    # for the destination of our replacement:
+    "True": sympy.true, "False": sympy.false,
+    # These two are then needed for evaluateFalseTransformer replacements:
+    "true": sympy.true, "false": sympy.false
 }
 
 _PARSE_HINTS = {}

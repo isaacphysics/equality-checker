@@ -156,7 +156,9 @@ _GLOBAL_DICT = {
     "Exp": sympy.exp, "Log": logarithm, "Ln": sympy.ln,
     # "factorial": factorial,  "Factorial": factorial,
     "sqrt": sympy.sqrt, "abs": sympy.Abs,
-    "Sqrt": sympy.sqrt, "Abs": sympy.Abs
+    "Sqrt": sympy.sqrt, "Abs": sympy.Abs,
+    # We need these to be set, but do not want to override them for maths:
+    "true": True, "false": False
 }
 
 _PARSE_HINTS = {

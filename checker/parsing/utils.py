@@ -332,40 +332,37 @@ def auto_symbol(tokens, local_dict, global_dict):
     return result
 
 
-def rewrite_inline_xor(tokens, local_dict, global_dict):
-    """Rewrite a new "xor" keyword into a bitwise XOR operation.
+def fix_booleans(tokens, local_dict, global_dict):
+    """
+    Combines several fixes to the tokenising of boolean-like inputs, for efficiency.
 
-       This relies on the EvaluateFalseTransformer above taking this bitwise
-       operation and changing it into the correct boolean operation later.
-       Any other solution would have to worry about precedence and brackets,
-       but this method leave Python to sort all of that out as it would normally.
-       Hacky, but simple and effective.
+     - Fix the precedence issues with "or", "and" and "not" being looser
+         than equals, which led to problems such as
+         "A == B or C" incorrectly becoming "Or(Eq(A, B), C)",
+         by changing them into bitwise operators to be fixed post-parsing.
+     - Add an xor keyword by tokenising it into a bitwise XOR to be treated
+         in the same way as the above bitwise operators must be.
+     - Convert 0 and 1 to be False and True respectively.
     """
     result = []
-    for tok in tokens:
-        tokNum, tokVal = tok
-        if tokNum == tokenize.NAME and tokVal and tokVal.lower() == "xor":
-            result.append((tokenize.OP, '^'))
-        else:
-            result.append(tok)
-    return result
-
-
-def integer_to_bool(tokens, local_dict, global_dict):
-    """
-    Converts 0 and 1 to use SymPy boolean values.
-
-    """
-    result = []
-    _integerMap = {
-        "0": "False",
-        "1": "True"
+    _bool_to_bit_map = {
+        "xor": "^",
+        "or": "|",
+        "and": "&",
+        "not": "~"
+    }
+    _integer_map = {
+        "0": "false",
+        "1": "true"
     }
 
     for tok in tokens:
         tokNum, tokVal = tok
-        if tokNum == tokenize.NUMBER and tokVal and tokVal in ["0", "1"]:
-            result.append((tokenize.NAME, _integerMap[tokVal]))
+        tokVal = tokVal.lower()
+        if tokNum == tokenize.NAME and tokVal and tokVal in _bool_to_bit_map:
+            result.append((tokenize.OP, _bool_to_bit_map[tokVal]))
+        elif tokNum == tokenize.NUMBER and tokVal in _integer_map:
+            result.append((tokenize.NAME, _integer_map[tokVal]))
         else:
             result.append(tok)
 
