@@ -197,7 +197,7 @@ class TestFundamentals(unittest.TestCase):
         print("   PASS   ".center(75, "#"))
 
     def test_boolean_and_bitwise(self):
-        print("\n\n\n" + " Test Boolean And Bitwise ".center(75, "#"))
+        print("\n\n\n" + " Test Boolean and Bitwise ".center(75, "#"))
         test_str = "A and B or C xor D"
         target_str = "D ^ C | B & A"
         response = api.check(test_str, target_str)
@@ -209,6 +209,31 @@ class TestFundamentals(unittest.TestCase):
         self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "{}"!'.format(response["equality_type"]))
         print("   PASS   ".center(75, "#"))
 
+    def test_one_is_true_boolean(self):
+        print("\n\n\n" + " Test One is True Boolean ".center(75, "#"))
+        test_str = "1"
+        target_str = "True"
+        response = api.check(test_str, target_str)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "{}"!'.format(response["equal"]))
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "{}"!'.format(response["equality_type"]))
+        self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "{}"!'.format(response["equality_type"]))
+        print("   PASS   ".center(75, "#"))
+
+    def test_zero_is_false_boolean(self):
+        print("\n\n\n" + " Test Zero is False Boolean ".center(75, "#"))
+        test_str = "0"
+        target_str = "False"
+        response = api.check(test_str, target_str)
+
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true", 'Expected "equal" to be "true", got "{}"!'.format(response["equal"]))
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES, 'Unexpected "equality_type": "{}"!'.format(response["equality_type"]))
+        self.assertTrue(response["equality_type"] == "exact", 'For these expressions, expected "equality_type" to be "exact", got "{}"!'.format(response["equality_type"]))
+        print("   PASS   ".center(75, "#"))
 
 #####
 # These tests check the error behaviour when invalid values are passed.
