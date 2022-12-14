@@ -4,3 +4,4 @@ env
 *.pyc
 .coverage
 .pytest_cache/
+venv/
