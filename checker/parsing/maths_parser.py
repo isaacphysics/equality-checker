@@ -154,7 +154,7 @@ _GLOBAL_DICT = {
     "cosech": sympy.csch, "sech": sympy.sech, "coth": sympy.coth,
     "exp": sympy.exp, "log": logarithm, "ln": sympy.ln,
     "Exp": sympy.exp, "Log": logarithm, "Ln": sympy.ln,
-    # "factorial": factorial,  "Factorial": factorial,
+    "factorial": factorial,  "Factorial": factorial,
     "sqrt": sympy.sqrt, "abs": sympy.Abs,
     "Sqrt": sympy.sqrt, "Abs": sympy.Abs,
     # We need these to be set, but do not want to override them for maths:

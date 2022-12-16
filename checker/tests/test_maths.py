@@ -638,16 +638,36 @@ class TestOthers(unittest.TestCase):
         self.assertTrue(response["syntax_error"] == "true", 'Expected "syntax_error" to be "true", got "{}"!'.format(response["syntax_error"]))
         print("   PASS   ".center(75, "#"))
 
-#    def test_factorials_limited(self):
-#        print "\n\n\n" + " Test Factorials are correctly Limited ".center(75, "#")
-#        test_str = "factorial(1000)"
-#        target_str = "1"
-#        symbols = None
-#        response = api.check(test_str, target_str, symbols=symbols)
-#
-#        self.assertTrue("error" in response, 'Unexpected lack of "error" in response!')
-#        self.assertTrue(response["error"] == "Parsing Test Expression Failed.", "Error message not as expected '{}'.".format(response["error"]))
-#        print "   PASS   ".center(75, "#")
+    def test_factorials_simplify(self):
+        print("\n\n\n" + " Test Factorials are correctly simplified ".center(75, "#"))
+        test_str = "factorial(n)/factorial(n + 1)"
+        target_str = "1/(n + 1)"
+        symbols = None
+        response = api.check(test_str, target_str, symbols=symbols)
+        self.assertTrue("error" not in response, 'Unexpected "error" in response!')
+        self.assertTrue("equal" in response, 'Key "equal" not in response!')
+        self.assertTrue(response["equal"] == "true",
+                        'Expected "equal" to be "true", got "{}"!'.format(response["equal"]))
+        self.assertTrue("equality_type" in response, 'Key "equality_type" not in response!')
+        self.assertTrue(response["equality_type"] in EQUALITY_TYPES,
+                        'Unexpected "equality_type": "{}"!'.format(response["equality_type"]))
+        self.assertTrue(response["equality_type"] == "symbolic",
+                        'For these expressions, expected "equality_type" to be "symbolic", got "{}"!'.format(
+                            response["equality_type"]))
+        print("   PASS   ".center(75, "#"))
+
+    def test_factorials_limited(self):
+        print("\n\n\n" + " Test Factorials are correctly Limited ".center(75, "#"))
+        test_str = "factorial(1000)"
+        target_str = "1"
+        symbols = None
+        try:
+            api.check(test_str, target_str, symbols=symbols)
+            self.fail('Unexpected lack of "error" in response!')
+        except Exception as e:
+            self.assertTrue(str(e) == '[Factorial]: Too large integer to compute factorial effectively!',
+                            "Error message not as expected '{}'.".format(e))
+            print("   PASS   ".center(75, "#"))
 
     def test_known_sympy_rational_issue(self):
         print("\n\n\n" + " Test SymPy Rational Issue ".center(75, "#"))
