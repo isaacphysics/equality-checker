@@ -26,7 +26,8 @@ KNOWN_PAIRS = dict()
 NUMPY_MISSING_FN = {"csc": lambda x: 1/numpy.sin(x), "sec": lambda x: 1/numpy.cos(x), "cot": lambda x: 1/numpy.tan(x),
                     "acsc": lambda x: numpy.arcsin(numpy.float_power(x, -1)), "asec": lambda x: numpy.arccos(numpy.float_power(x, -1)), "acot": lambda x: numpy.arctan(numpy.float_power(x, -1)),
                     "asinh": lambda x: numpy.arcsinh(x), "acosh": lambda x: numpy.arccosh(x), "atanh": lambda x: numpy.arctanh(x),
-                    "csch": lambda x: 1/numpy.sinh(x), "sech": lambda x: 1/numpy.cosh(x), "coth": lambda x: 1/numpy.tanh(x)}
+                    "csch": lambda x: 1/numpy.sinh(x), "sech": lambda x: 1/numpy.cosh(x), "coth": lambda x: 1/numpy.tanh(x),
+                    "acsch": lambda x: numpy.arcsinh(numpy.float_power(x, -1)), "asech": lambda x: numpy.arccosh(numpy.float_power(x, -1)), "acoth": lambda x: numpy.arctanh(numpy.float_power(x, -1))}
 # Make a complex form of the above for no-variable cases of numeric evaluation.
 # (Late Binding means that can't just use NUMPY_MISSING_FN[k] since this isn't evaluated in
 # the for loop properly. But adding it as a default argument to the lambda *does* cause the

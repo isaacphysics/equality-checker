@@ -133,27 +133,40 @@ _TRANSFORMS = (
 )
 
 _GLOBAL_DICT = {
+    # Classes of variable:
     "Symbol": sympy.Symbol, "Integer": sympy.Integer,
     "Float": sympy.Float, "Rational": sympy.Rational,
+    # Operations:
     "Mul": sympy.Mul, "Pow": sympy.Pow, "Add": sympy.Add,
     "Rel": sympy.Rel, "Eq": Equal,
+    # Derivatives:
     "Derivative": sympy.Derivative, "diff": sympy.Derivative,
+    # Plain trig:
     "sin": sympy.sin, "cos": sympy.cos, "tan": sympy.tan,
-    "Sin": sympy.sin, "Cos": sympy.cos, "Tan": sympy.tan,
-    "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
-    "asin": sympy.asin, "acos": sympy.acos, "atan": sympy.atan,
-    "ArcSin": sympy.asin, "ArcCos": sympy.acos, "ArcTan": sympy.atan,
-    "sinh": sympy.sinh, "cosh": sympy.cosh, "tanh": sympy.tanh,
-    "arcsinh": sympy.asinh, "arccosh": sympy.acosh, "arctanh": sympy.atanh,
-    "asinh": sympy.asinh, "acosh": sympy.acosh, "atanh": sympy.atanh,
     "cosec": sympy.csc, "sec": sympy.sec, "cot": sympy.cot,
+    "Sin": sympy.sin, "Cos": sympy.cos, "Tan": sympy.tan,
     "Csc": sympy.csc, "Sec": sympy.sec, "Cot": sympy.cot,
+    # Inverse trig:
+    "arcsin": sympy.asin, "arccos": sympy.acos, "arctan": sympy.atan,
     "arccosec": sympy.acsc, "arcsec": sympy.asec, "arccot": sympy.acot,
+    "asin": sympy.asin, "acos": sympy.acos, "atan": sympy.atan,
     "acsc": sympy.acsc, "asec": sympy.asec, "acot": sympy.acot,
+    "ArcSin": sympy.asin, "ArcCos": sympy.acos, "ArcTan": sympy.atan,
     "ArcCsc": sympy.acsc, "ArcSec": sympy.asec, "ArcCot": sympy.acot,
+    # Hyperbolic trig:
+    "sinh": sympy.sinh, "cosh": sympy.cosh, "tanh": sympy.tanh,
     "cosech": sympy.csch, "sech": sympy.sech, "coth": sympy.coth,
+    # Inverse hyperbolic trig:
+    "arcsinh": sympy.asinh, "arccosh": sympy.acosh, "arctanh": sympy.atanh,
+    "arccosech": sympy.acsch, "arcsech": sympy.asech, "arccoth": sympy.acoth,
+    "arsinh": sympy.asinh, "arcosh": sympy.acosh, "artanh": sympy.atanh,
+    "arcsch": sympy.acsch, "arsech": sympy.asech, "arcoth": sympy.acoth,
+    "asinh": sympy.asinh, "acosh": sympy.acosh, "atanh": sympy.atanh,
+    "acsch": sympy.acsch, "asech": sympy.asech, "acoth": sympy.acoth,
+    # Exponentials and logarithms:
     "exp": sympy.exp, "log": logarithm, "ln": sympy.ln,
     "Exp": sympy.exp, "Log": logarithm, "Ln": sympy.ln,
+    # Odds:
     "factorial": factorial,  "Factorial": factorial,
     "sqrt": sympy.sqrt, "abs": sympy.Abs,
     "Sqrt": sympy.sqrt, "Abs": sympy.Abs,
