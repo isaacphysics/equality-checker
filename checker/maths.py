@@ -288,9 +288,11 @@ def numeric_equality(test_expr, target_expr, *, complexify=False):
     # Can we safely cast the values to 64 bit floats (2 x 64 bits for complex values)?
     # Real values that can be safely cast to 'float64' can always be cast to 'complex128'
     # safely as well, and since eval_f_test may be complex, this errs on the side of caution.
-    safe_datatype = "complex128"
-    if not all([numpy.can_cast(a, safe_datatype, casting='safe') for a in [eval_f_target, eval_f_test]]):
-        raise NumericRangeException("A function has values not representable by 64 bit floats!")
+    # safe_datatype = "complex128"
+    # if not all([numpy.can_cast(a, safe_datatype, casting='safe') for a in [eval_f_target, eval_f_test]]):
+    #     raise NumericRangeException("A function has values not representable by 64 bit floats!")
+    # This functionality was removed in NEP 50: https://numpy.org/neps/nep-0050-scalar-promotion.html, possibly
+    # because it wasn't actually doing what we expected it to be doing.
 
     # If get any NaN's from the functions; things are looking bad:
     if not (numpy.all(numpy.isfinite(eval_f_target)) and numpy.all(numpy.isfinite(eval_f_test))):

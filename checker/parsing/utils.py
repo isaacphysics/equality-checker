@@ -120,8 +120,8 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
        future proof!
     """
 
-    _evaluate_false_keyword = ast.keyword(arg='evaluate', value=ast.NameConstant(value=False, ctx=ast.Load()))
-    _one = ast.Call(func=ast.Name(id='Integer', ctx=ast.Load()), args=[ast.Num(n=1)], keywords=[])
+    _evaluate_false_keyword = ast.keyword(arg='evaluate', value=ast.Constant(value=False))
+    _one = ast.Call(func=ast.Name(id='Integer', ctx=ast.Load()), args=[ast.Constant(value=1)], keywords=[])
     _minus_one = ast.UnaryOp(op=ast.USub(), operand=_one)
     _bool_ops = {
         ast.And: "And",
@@ -177,7 +177,7 @@ class _EvaluateFalseTransformer(sympy_parser.EvaluateFalseTransformer):
         if isinstance(node.ops[0], ast.Eq):
             return ast.Call(func=ast.Name(id='Eq', ctx=ast.Load()), args=[node.left, node.comparators[0]], keywords=[self._evaluate_false_keyword])
         elif operator_class in RELATIONS:
-            return ast.Call(func=ast.Name(id='Rel', ctx=ast.Load()), args=[node.left, node.comparators[0], ast.Str(RELATIONS[operator_class])], keywords=[self._evaluate_false_keyword])
+            return ast.Call(func=ast.Name(id='Rel', ctx=ast.Load()), args=[node.left, node.comparators[0], ast.Constant(value=RELATIONS[operator_class])], keywords=[self._evaluate_false_keyword])
         else:
             # An unknown type of relation. Leave alone:
             return node
