@@ -9,7 +9,7 @@ from checker import maths, logic
 
 __all__ = ["app"]
 
-MAX_REQUEST_COMPUTATION_TIME = 5  # How long should we spend on a single request?
+MAX_REQUEST_COMPUTATION_TIME = 2  # How many seconds should we spend on a single request?
 
 
 app = Flask(__name__)
