@@ -1,5 +1,6 @@
 .pytest_cache
-__pycache__
+**/__pycache__
+**/*.py[cod]
 env
 .idea
 .git
@@ -7,6 +8,4 @@ env
 !.git/refs/heads/*
 !.git/refs/tags/*
 
-*.pyc
-*.pyo
 .coveragerc
