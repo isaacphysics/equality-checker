@@ -1,6 +1,4 @@
-FROM python:3.12-slim
-
-RUN ln -sf /bin/bash /bin/sh
+FROM python:3.14-slim
 
 # To ensure output printed correctly, alter buffering:
 ENV PYTHONUNBUFFERED=0
@@ -8,11 +6,11 @@ ENV PYTHONUNBUFFERED=0
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
 
-COPY requirements.txt /usr/src/app/
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml /usr/src/app/
+RUN pip install --no-cache-dir -e .
 
 COPY . /usr/src/app
 
 EXPOSE 5000
 
-CMD gunicorn --config=checker/server/gunicorn_conf.py checker.server:app
+CMD ["gunicorn", "--config", "checker/server/gunicorn_conf.py", "checker.server:app"]

@@ -183,7 +183,3 @@ def ping():
 # This will only work provided debug=False - otherwise the debugger hijacks them!
 for code in default_exceptions.keys():
     app.register_error_handler(code, _make_json_error)
-
-if __name__ == '__main__':
-    # Run the app:
-    app.run(port=5000, host="0.0.0.0", debug=False)

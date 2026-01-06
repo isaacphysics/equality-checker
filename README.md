@@ -9,10 +9,10 @@ This project now uses Python 3. The last version using Python 2.7 was [v0.8.0](h
 
 ### Development Setup Instructions
 #### Simple Setup
-1. Install [Python 3.10](https://www.python.org/)
+1. Install [Python 3.14](https://www.python.org/)
 2. Clone this repository
-3. Run `pip install -r requirements.txt`
-4. Run `python server\api.py`
+3. Run `pip install -e .`
+4. Run `python -m checker.server`
 
 Your server should be running at `http://localhost:5000/check`.
 Now make JSON-based POST requests with target and test expression strings, e.g.
@@ -48,12 +48,12 @@ To develop the Docker container as well:
 
 5. Install [Docker](https://www.docker.com/)
 7. Run `docker build -t ucamcldtg/equality-checker --pull .`
-8. Test using `docker run -p 5000:5000 -it ucamcldtg/equality-checker` rather than running Python locally
+8. Test using `docker run --rm -p 5000:5000 -it ucamcldtg/equality-checker` rather than running Python locally
 9. Optionally deploy to dockerhub: `docker push ucamcldtg/equality-checker` (requires authentication)
 
 ### Production Use
 
-The Docker container is available from [dockerhub](https://registry.hub.docker.com/u/ucamcldtg/equality-checker/) by running: `docker pull ucamcldtg/equality-checker` or by listing it as an image in a Docker Compose file. Port 5000 of the container will need to be mapped to the port the checker is expected to listen on.
+The Docker container is available from [dockerhub](https://hub.docker.com/r/ucamcldtg/equality-checker) by running: `docker pull ucamcldtg/equality-checker` or by listing it as an image in a Docker Compose file. Port 5000 of the container will need to be mapped to the port the checker is expected to listen on.
 
 For instance, run:
 ```
